@@ -2,23 +2,22 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Carrefour l'Atelier - Gestion du budget</title>
+    <title>Carrefour l'Atelier - Budget</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Firebase en mode compat -->
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-firestore-compat.js"></script>
 
     <style>
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: Arial, sans-serif;
             text-align: center;
             padding: 20px;
-            background-color: #f0f2f5;
+            background-color: #f4f4f4;
         }
         h1 {
             color: #007bff;
-            font-size: 28px;
         }
         .budget-total {
             font-size: 24px;
@@ -53,7 +52,7 @@
         .buttons button:hover {
             background: #0056b3;
         }
-        .club-buttons, .budget-section {
+        .budget-section {
             display: none;
             margin-top: 10px;
         }
@@ -104,12 +103,6 @@
             <button onclick="selectCategory('vacancesPrintemps')">Vacances Printemps (500€)</button>
         </div>
 
-        <div id="clubSelection" class="club-buttons">
-            <h3>Choisissez un club :</h3>
-            <button onclick="selectClub('ados')">Club Ados (250€)</button>
-            <button onclick="selectClub('enfants')">Club Enfants (250€)</button>
-        </div>
-
         <div id="budgetSection" class="budget-section">
             <h2>Budget restant : <span id="budget">---</span> €</h2>
             <input type="number" id="amount" placeholder="Montant à déduire">
@@ -122,6 +115,7 @@
     </div>
 
     <script>
+        // 🔥 CONFIGURATION FIREBASE
         const firebaseConfig = {
             apiKey: "TA_CLE_API_ICI",
             authDomain: "ton-projet.firebaseapp.com",
@@ -138,13 +132,12 @@
         let budgets = {
             total: 1800,
             horsVacances: 800,
-            vacancesHiver: { total: 500, ados: 250, enfants: 250 },
-            vacancesPrintemps: { total: 500, ados: 250, enfants: 250 },
+            vacancesHiver: 500,
+            vacancesPrintemps: 500,
             historique: []
         };
 
         let selectedCategory = null;
-        let selectedClub = null;
 
         async function loadBudgets() {
             const doc = await docRef.get();
@@ -159,23 +152,12 @@
 
         function selectCategory(category) {
             selectedCategory = category;
-            selectedClub = null;
-            document.getElementById("clubSelection").style.display = (category === "vacancesHiver" || category === "vacancesPrintemps") ? "block" : "none";
-            document.getElementById("budgetSection").style.display = (category === "horsVacances") ? "block" : "none";
-            updateBudgetDisplay();
-        }
-
-        function selectClub(club) {
-            selectedClub = club;
-            document.getElementById("clubSelection").style.display = "none";
             document.getElementById("budgetSection").style.display = "block";
             updateBudgetDisplay();
         }
 
         function retourMenu() {
             selectedCategory = null;
-            selectedClub = null;
-            document.getElementById("clubSelection").style.display = "none";
             document.getElementById("budgetSection").style.display = "none";
         }
 
@@ -183,10 +165,13 @@
             let amount = parseFloat(document.getElementById("amount").value);
             if (isNaN(amount) || amount <= 0 || !selectedCategory) return;
 
+            budgets[selectedCategory] -= amount;
+            budgets.total -= amount;
+
             let now = new Date();
             let timestamp = now.toLocaleString();
+            budgets.historique.push(`${timestamp} - ${amount}€ (${selectedCategory})`);
 
-            budgets.historique.push(`${timestamp} - ${amount}€ (${selectedCategory}${selectedClub ? " - " + selectedClub : ""})`);
             await docRef.set(budgets);
             updateBudgetDisplay();
             afficherHistorique();
@@ -196,11 +181,26 @@
         function afficherHistorique() {
             const list = document.getElementById("history");
             list.innerHTML = "";
-            budgets.historique.forEach(item => {
+            budgets.historique.forEach((item, index) => {
                 let li = document.createElement("li");
-                li.textContent = item;
+                li.innerHTML = `${item} <button class="delete-btn" onclick="annulerDepense(${index})">X</button>`;
                 list.appendChild(li);
             });
+        }
+
+        async function annulerDepense(index) {
+            if (!confirm("Êtes-vous sûr de vouloir supprimer cette dépense ?")) return;
+            let montantAnnule = parseFloat(budgets.historique[index].match(/- (\d+)/)[1]);
+            budgets.total += montantAnnule;
+            budgets.historique.splice(index, 1);
+            await docRef.set(budgets);
+            updateBudgetDisplay();
+            afficherHistorique();
+        }
+
+        async function updateBudgetDisplay() {
+            document.getElementById("budget").textContent = budgets[selectedCategory];
+            document.getElementById("totalBudget").textContent = budgets.total;
         }
 
         loadBudgets();
