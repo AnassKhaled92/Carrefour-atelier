@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Carrefour l'atelier (Firebase)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Inclure Firebase en mode compat -->
+    <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+        h1 { color: #007bff; }
+        button { padding: 10px; margin: 5px; font-size: 16px; cursor: pointer; }
+        input { padding: 10px; margin: 5px; font-size: 16px; }
+        ul { list-style-type: none; padding: 0; }
+    </style>
+</head>
+<body>
+    <h1>Carrefour l'atelier</h1>
+    <h2>Budget restant: <span id="budget">Loading...</span> €</h2>
+    
+    <input type="number" id="amount" placeholder="Montant à déduire">
+    <button onclick="deduireMontant()">Déduire</button>
+    
+    <h3>Historique des dépenses :</h3>
+    <ul id="history"></ul>
+
+    <script>
+        // 🔥 CONFIGURATION FIREBASE 🔥
+        const firebaseConfig = {
+            apiKey: "AIzaSyBaNNWoRNUC7d7N-Lt16Gu-Sv1k...",
+            authDomain: "carrefouratelier.firebaseapp.com",
+            projectId: "carrefouratelier",
+            storageBucket: "carrefouratelier.appspot.com",
+            messagingSenderId: "400841694123",
+            appId: "1:400841694123:web:244058132886b3..."
+        };
+
+        // 🔥 Initialisation Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const docRef = db.collection("budgets").doc("global");
+
+        // ✅ Charger le budget depuis Firestore
+        async function chargerBudget() {
+            const doc = await docRef.get();
+            if (doc.exists) {
+                const data = doc.data();
+                document.getElementById("budget").textContent = data.montant;
+                afficherHistorique(data.historique);
+            } else {
+                await docRef.set({ montant: 800, historique: [] });
+                document.getElementById("budget").textContent = 800;
+            }
+        }
+
+        // ✅ Fonction pour déduire un montant
+        async function deduireMontant() {
+            let amount = parseFloat(document.getElementById("amount").value);
+            if (isNaN(amount) || amount <= 0) return;
+            
+            const doc = await docRef.get();
+            let data = doc.data();
+            data.montant -= amount;
+            data.historique.push(`- ${amount}€`);
+            await docRef.set(data);
+
+            document.getElementById("budget").textContent = data.montant;
+            afficherHistorique(data.historique);
+            document.getElementById("amount").value = "";
+        }
+
+        // ✅ Afficher l'historique des dépenses
+        function afficherHistorique(historique) {
+            const list = document.getElementById("history");
+            list.innerHTML = "";
+            historique.forEach(item => {
+                let li = document.createElement("li");
+                li.textContent = item;
+                list.appendChild(li);
+            });
+        }
+
+        // Charger les données Firestore au démarrage
+        chargerBudget();
+    </script>
+</body>
+</html>
