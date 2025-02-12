@@ -38,8 +38,8 @@
         <!-- Sélection du club -->
         <div id="clubSelection" class="club-buttons">
             <h3>Choisissez un club :</h3>
-            <button onclick="selectClub('ados')">Club Ados (250€)</button>
-            <button onclick="selectClub('enfants')">Club Enfants (250€)</button>
+            <button id="clubAdosBtn" onclick="selectClub('ados')">Club Ados (250€)</button>
+            <button id="clubEnfantsBtn" onclick="selectClub('enfants')">Club Enfants (250€)</button>
         </div>
 
         <!-- Budget et actions -->
@@ -57,12 +57,12 @@
     <script>
         // 🔥 CONFIGURATION FIREBASE
         const firebaseConfig = {
-            apiKey: "AIzaSyBaNNWoRNUC7d7N-Lt16Gu-Sv1k...",
-            authDomain: "carrefouratelier.firebaseapp.com",
-            projectId: "carrefouratelier",
-            storageBucket: "carrefouratelier.appspot.com",
-            messagingSenderId: "400841694123",
-            appId: "1:400841694123:web:244058132886b3..."
+            apiKey: "TA_CLE_API_ICI",
+            authDomain: "ton-projet.firebaseapp.com",
+            projectId: "ton-projet",
+            storageBucket: "ton-projet.appspot.com",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:abcdef123456"
         };
 
         // 🔥 Initialisation Firebase
@@ -71,7 +71,7 @@
         const docRef = db.collection("budgets").doc("global");
 
         // ✅ Budgets de base
-        const budgetsParDefaut = {
+        let budgets = {
             total: 1800,
             horsVacances: 800,
             vacancesHiver: { total: 500, ados: 250, enfants: 250 },
@@ -79,29 +79,39 @@
             historique: []
         };
 
-        let budgets = { ...budgetsParDefaut };
         let selectedCategory = null;
         let selectedClub = null;
+
+        async function loadBudgets() {
+            const doc = await docRef.get();
+            if (doc.exists) {
+                budgets = doc.data();
+            } else {
+                await docRef.set(budgets);
+            }
+            updateBudgetDisplay();
+        }
 
         function selectCategory(category) {
             selectedCategory = category;
             selectedClub = null;
 
-            // Masquer le menu principal et afficher les clubs ou budget
             document.getElementById("menuSelection").style.display = "none";
-
-            if (category === "vacancesHiver" || category === "vacancesPrintemps") {
-                document.getElementById("clubSelection").style.display = "block";
-            } else {
-                document.getElementById("budgetSection").style.display = "block";
-                updateBudgetDisplay();
-            }
+            document.getElementById("clubSelection").style.display = (category === "vacancesHiver" || category === "vacancesPrintemps") ? "block" : "none";
+            document.getElementById("budgetSection").style.display = (category === "horsVacances") ? "block" : "none";
+            updateBudgetDisplay();
         }
 
         function selectClub(club) {
             selectedClub = club;
             document.getElementById("clubSelection").style.display = "none";
             document.getElementById("budgetSection").style.display = "block";
+
+            if (club === "ados") {
+                document.getElementById("clubEnfantsBtn").style.display = "none";
+            } else {
+                document.getElementById("clubAdosBtn").style.display = "none";
+            }
             updateBudgetDisplay();
         }
 
@@ -111,6 +121,8 @@
             document.getElementById("menuSelection").style.display = "block";
             document.getElementById("clubSelection").style.display = "none";
             document.getElementById("budgetSection").style.display = "none";
+            document.getElementById("clubAdosBtn").style.display = "inline-block";
+            document.getElementById("clubEnfantsBtn").style.display = "inline-block";
         }
 
         async function updateBudgetDisplay() {
@@ -147,27 +159,7 @@
             document.getElementById("amount").value = "";
         }
 
-        function afficherHistorique() {
-            const list = document.getElementById("history");
-            list.innerHTML = "";
-            budgets.historique.forEach((item, index) => {
-                let li = document.createElement("li");
-                li.innerHTML = `${item} <button onclick="annulerDepense(${index})">Annuler</button>`;
-                list.appendChild(li);
-            });
-        }
-
-        async function annulerDepense(index) {
-            if (!confirm("Êtes-vous sûr de vouloir supprimer cette dépense ?")) return;
-            let montantAnnule = parseFloat(budgets.historique[index].match(/- (\d+)/)[1]);
-            budgets.total += montantAnnule;
-            budgets.historique.splice(index, 1);
-            await docRef.set(budgets);
-            updateBudgetDisplay();
-            afficherHistorique();
-        }
-
-        updateBudgetDisplay();
+        loadBudgets();
     </script>
 </body>
 </html>
