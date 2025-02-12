@@ -10,33 +10,44 @@
     <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-firestore-compat.js"></script>
 
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f4f4f4; }
         h1 { color: #007bff; }
-        button { padding: 10px; margin: 5px; font-size: 16px; cursor: pointer; }
-        select, input { padding: 10px; margin: 5px; font-size: 16px; }
+        .budget-total { font-size: 24px; font-weight: bold; margin-bottom: 20px; }
+        .container { background: white; padding: 20px; border-radius: 10px; max-width: 400px; margin: auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .buttons { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
+        .buttons button { padding: 10px; font-size: 16px; cursor: pointer; border: none; background: #007bff; color: white; border-radius: 5px; }
+        .buttons button:hover { background: #0056b3; }
+        .club-buttons { display: none; margin-top: 10px; }
+        input, button { padding: 10px; margin: 5px; font-size: 16px; }
         ul { list-style-type: none; padding: 0; }
     </style>
 </head>
 <body>
-    <h1>Carrefour l'atelier - Gestion du budget</h1>
+    <h1>Carrefour l'atelier - Budget</h1>
+    <div class="budget-total">💰 Montant total du bon : <span id="totalBudget">1800</span> €</div>
 
-    <!-- Sélection du budget -->
-    <h2>Choisir la catégorie :</h2>
-    <select id="budgetSelection" onchange="chargerBudget()">
-        <option value="horsVacances">Hors vacances (800€)</option>
-        <option value="adosHiver">Club Ados - Vacances d'hiver (250€)</option>
-        <option value="enfantsHiver">Club Enfants - Vacances d'hiver (250€)</option>
-        <option value="adosPrintemps">Club Ados - Vacances de printemps (250€)</option>
-        <option value="enfantsPrintemps">Club Enfants - Vacances de printemps (250€)</option>
-    </select>
+    <div class="container">
+        <h2>Choisissez une période :</h2>
+        <div class="buttons">
+            <button onclick="selectCategory('horsVacances')">Hors vacances (800€)</button>
+            <button onclick="selectCategory('vacancesHiver')">Vacances Hiver (500€)</button>
+            <button onclick="selectCategory('vacancesPrintemps')">Vacances Printemps (500€)</button>
+        </div>
 
-    <h2>Budget restant : <span id="budget">Chargement...</span> €</h2>
+        <div id="clubSelection" class="club-buttons">
+            <h3>Choisissez un club :</h3>
+            <button onclick="selectClub('ados')">Club Ados (250€)</button>
+            <button onclick="selectClub('enfants')">Club Enfants (250€)</button>
+        </div>
 
-    <input type="number" id="amount" placeholder="Montant à déduire">
-    <button onclick="deduireMontant()">Déduire</button>
+        <h2>Budget restant : <span id="budget">---</span> €</h2>
 
-    <h3>Historique des dépenses :</h3>
-    <ul id="history"></ul>
+        <input type="number" id="amount" placeholder="Montant à déduire">
+        <button onclick="deduireMontant()">Déduire</button>
+
+        <h3>Historique des dépenses :</h3>
+        <ul id="history"></ul>
+    </div>
 
     <script>
         // 🔥 CONFIGURATION FIREBASE
@@ -54,80 +65,88 @@
         const db = firebase.firestore();
         const docRef = db.collection("budgets").doc("global");
 
-        // ✅ Budgets de base avec les bons montants
+        // ✅ Budgets de base
         const budgetsParDefaut = {
+            total: 1800,
             horsVacances: 800,
-            adosHiver: 250,
-            enfantsHiver: 250,
-            adosPrintemps: 250,
-            enfantsPrintemps: 250,
-            historique: {}
+            vacancesHiver: { total: 500, ados: 250, enfants: 250 },
+            vacancesPrintemps: { total: 500, ados: 250, enfants: 250 },
+            historique: []
         };
 
         let budgets = { ...budgetsParDefaut };
+        let selectedCategory = null;
+        let selectedClub = null;
 
-        // ✅ Charger le budget depuis Firestore
-        async function chargerBudget() {
-            const selectedBudget = document.getElementById("budgetSelection").value;
-            const doc = await docRef.get();
-            
-            if (doc.exists) {
-                budgets = doc.data();
-            } else {
-                await docRef.set(budgetsParDefaut);
-                budgets = { ...budgetsParDefaut };
-            }
-
-            document.getElementById("budget").textContent = budgets[selectedBudget];
-            afficherHistorique(selectedBudget);
+        async function selectCategory(category) {
+            selectedCategory = category;
+            selectedClub = null;
+            document.getElementById("clubSelection").style.display = (category === "vacancesHiver" || category === "vacancesPrintemps") ? "block" : "none";
+            updateBudgetDisplay();
         }
 
-        // ✅ Déduire un montant
-        async function deduireMontant() {
-            const selectedBudget = document.getElementById("budgetSelection").value;
-            let amount = parseFloat(document.getElementById("amount").value);
-            if (isNaN(amount) || amount <= 0) return;
+        function selectClub(club) {
+            selectedClub = club;
+            updateBudgetDisplay();
+        }
 
-            budgets[selectedBudget] -= amount;
-            if (!budgets.historique[selectedBudget]) {
-                budgets.historique[selectedBudget] = [];
+        async function updateBudgetDisplay() {
+            let budgetRestant = "N/A";
+            if (selectedCategory) {
+                if (selectedCategory === "horsVacances") {
+                    budgetRestant = budgets.horsVacances;
+                } else if (selectedCategory && selectedClub) {
+                    budgetRestant = budgets[selectedCategory][selectedClub];
+                } else {
+                    budgetRestant = budgets[selectedCategory].total;
+                }
             }
-            budgets.historique[selectedBudget].push(`- ${amount}€`);
+            document.getElementById("budget").textContent = budgetRestant;
+            document.getElementById("totalBudget").textContent = budgets.total;
+        }
+
+        async function deduireMontant() {
+            let amount = parseFloat(document.getElementById("amount").value);
+            if (isNaN(amount) || amount <= 0 || !selectedCategory) return;
+
+            if (selectedCategory === "horsVacances") {
+                budgets.horsVacances -= amount;
+            } else if (selectedCategory && selectedClub) {
+                budgets[selectedCategory][selectedClub] -= amount;
+                budgets[selectedCategory].total -= amount;
+            }
+            budgets.total -= amount;
+            budgets.historique.push(`- ${amount}€ (${selectedCategory}${selectedClub ? " - " + selectedClub : ""})`);
 
             await docRef.set(budgets);
-            document.getElementById("budget").textContent = budgets[selectedBudget];
-            afficherHistorique(selectedBudget);
+            updateBudgetDisplay();
+            afficherHistorique();
             document.getElementById("amount").value = "";
         }
 
-        // ✅ Afficher l'historique des dépenses
-        function afficherHistorique(selectedBudget) {
+        function afficherHistorique() {
             const list = document.getElementById("history");
             list.innerHTML = "";
-            const historique = budgets.historique[selectedBudget] || [];
-            
-            historique.forEach((item, index) => {
+            budgets.historique.forEach((item, index) => {
                 let li = document.createElement("li");
-                li.innerHTML = `${item} <button onclick="annulerDepense('${selectedBudget}', ${index})">Annuler</button>`;
+                li.innerHTML = `${item} <button onclick="annulerDepense(${index})">Annuler</button>`;
                 list.appendChild(li);
             });
         }
 
-        // ✅ Annuler une dépense avec confirmation
-        async function annulerDepense(selectedBudget, index) {
+        async function annulerDepense(index) {
             if (!confirm("Êtes-vous sûr de vouloir supprimer cette dépense ?")) return;
 
-            let montantAnnule = parseFloat(budgets.historique[selectedBudget][index].replace("- ", "").replace("€", ""));
-            budgets[selectedBudget] += montantAnnule;
-            budgets.historique[selectedBudget].splice(index, 1);
+            let montantAnnule = parseFloat(budgets.historique[index].match(/- (\d+)/)[1]);
+            budgets.total += montantAnnule;
+            budgets.historique.splice(index, 1);
 
             await docRef.set(budgets);
-            document.getElementById("budget").textContent = budgets[selectedBudget];
-            afficherHistorique(selectedBudget);
+            updateBudgetDisplay();
+            afficherHistorique();
         }
 
-        // Charger les données Firestore au démarrage
-        chargerBudget();
+        updateBudgetDisplay();
     </script>
 </body>
 </html>
