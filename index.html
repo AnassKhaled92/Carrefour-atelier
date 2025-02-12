@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Carrefour l'atelier - Gestion du budget</title>
+    <title>Carrefour l'Atelier - Gestion du budget</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <!-- Firebase en mode compat -->
@@ -10,27 +10,99 @@
     <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-firestore-compat.js"></script>
 
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f4f4f4; }
-        h1 { color: #007bff; }
-        .budget-total { font-size: 24px; font-weight: bold; margin-bottom: 20px; }
-        .container { background: white; padding: 20px; border-radius: 10px; max-width: 400px; margin: auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        .buttons { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-        .buttons button { padding: 10px; font-size: 16px; cursor: pointer; border: none; background: #007bff; color: white; border-radius: 5px; }
-        .buttons button:hover { background: #0056b3; }
-        .club-buttons, .budget-section { display: none; margin-top: 10px; }
-        input, button { padding: 10px; margin: 5px; font-size: 16px; }
-        ul { list-style-type: none; padding: 0; }
+        body {
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        h1 {
+            color: #007bff;
+            font-size: 28px;
+        }
+        .budget-total {
+            font-size: 24px;
+            font-weight: bold;
+            color: #28a745;
+            margin-bottom: 20px;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 450px;
+            margin: auto;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .buttons button {
+            padding: 12px;
+            font-size: 18px;
+            cursor: pointer;
+            border: none;
+            background: #007bff;
+            color: white;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+        .buttons button:hover {
+            background: #0056b3;
+        }
+        .club-buttons, .budget-section {
+            display: none;
+            margin-top: 10px;
+        }
+        input, button {
+            padding: 12px;
+            margin: 5px;
+            font-size: 18px;
+            width: 80%;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+            text-align: left;
+        }
+        ul li {
+            background: #f8f9fa;
+            padding: 10px;
+            margin: 5px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .delete-btn {
+            background: red;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .delete-btn:hover {
+            background: darkred;
+        }
     </style>
 </head>
 <body>
-    <h1>Carrefour l'atelier - Budget</h1>
-    <div class="budget-total">💰 Montant total du bon : <span id="totalBudget">1800</span> €</div>
+    <h1>Carrefour l'Atelier - Budget</h1>
+    <div class="budget-total">💰 Montant total : <span id="totalBudget">1800</span> €</div>
 
     <div class="container">
         <h2>Choisissez une période :</h2>
-        <button onclick="selectCategory('horsVacances')">Hors vacances (800€)</button>
-        <button onclick="selectCategory('vacancesHiver')">Vacances Hiver (500€)</button>
-        <button onclick="selectCategory('vacancesPrintemps')">Vacances Printemps (500€)</button>
+        <div class="buttons">
+            <button onclick="selectCategory('horsVacances')">Hors vacances (800€)</button>
+            <button onclick="selectCategory('vacancesHiver')">Vacances Hiver (500€)</button>
+            <button onclick="selectCategory('vacancesPrintemps')">Vacances Printemps (500€)</button>
+        </div>
 
         <div id="clubSelection" class="club-buttons">
             <h3>Choisissez un club :</h3>
@@ -50,7 +122,6 @@
     </div>
 
     <script>
-        // 🔥 CONFIGURATION FIREBASE
         const firebaseConfig = {
             apiKey: "TA_CLE_API_ICI",
             authDomain: "ton-projet.firebaseapp.com",
@@ -60,7 +131,6 @@
             appId: "1:1234567890:web:abcdef123456"
         };
 
-        // 🔥 Initialisation Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const docRef = db.collection("budgets").doc("global");
@@ -109,35 +179,14 @@
             document.getElementById("budgetSection").style.display = "none";
         }
 
-        async function updateBudgetDisplay() {
-            let budgetRestant = "N/A";
-            if (selectedCategory) {
-                if (selectedCategory === "horsVacances") {
-                    budgetRestant = budgets.horsVacances;
-                } else if (selectedCategory && selectedClub) {
-                    budgetRestant = budgets[selectedCategory][selectedClub];
-                }
-            }
-            document.getElementById("budget").textContent = budgetRestant;
-            document.getElementById("totalBudget").textContent = budgets.total;
-        }
-
         async function deduireMontant() {
             let amount = parseFloat(document.getElementById("amount").value);
             if (isNaN(amount) || amount <= 0 || !selectedCategory) return;
 
             let now = new Date();
-            let timestamp = now.toLocaleDateString() + " " + now.toLocaleTimeString();
+            let timestamp = now.toLocaleString();
 
-            if (selectedCategory === "horsVacances") {
-                budgets.horsVacances -= amount;
-            } else if (selectedCategory && selectedClub) {
-                budgets[selectedCategory][selectedClub] -= amount;
-                budgets[selectedCategory].total -= amount;
-            }
-            budgets.total -= amount;
             budgets.historique.push(`${timestamp} - ${amount}€ (${selectedCategory}${selectedClub ? " - " + selectedClub : ""})`);
-
             await docRef.set(budgets);
             updateBudgetDisplay();
             afficherHistorique();
