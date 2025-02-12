@@ -2,10 +2,10 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Carrefour l'atelier (Firebase)</title>
+    <title>Carrefour l'atelier - Gestion du budget</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- Inclure Firebase en mode compat -->
+
+    <!-- Firebase en mode compat -->
     <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-firestore-compat.js"></script>
 
@@ -13,22 +13,33 @@
         body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
         h1 { color: #007bff; }
         button { padding: 10px; margin: 5px; font-size: 16px; cursor: pointer; }
-        input { padding: 10px; margin: 5px; font-size: 16px; }
+        select, input { padding: 10px; margin: 5px; font-size: 16px; }
         ul { list-style-type: none; padding: 0; }
     </style>
 </head>
 <body>
-    <h1>Carrefour l'atelier</h1>
-    <h2>Budget restant: <span id="budget">Loading...</span> €</h2>
-    
+    <h1>Carrefour l'atelier - Gestion du budget</h1>
+
+    <!-- Sélection du budget -->
+    <h2>Choisir la catégorie :</h2>
+    <select id="budgetSelection" onchange="chargerBudget()">
+        <option value="horsVacances">Hors vacances (800€)</option>
+        <option value="adosHiver">Club Ados - Vacances d'hiver (250€)</option>
+        <option value="enfantsHiver">Club Enfants - Vacances d'hiver (250€)</option>
+        <option value="adosPrintemps">Club Ados - Vacances de printemps (250€)</option>
+        <option value="enfantsPrintemps">Club Enfants - Vacances de printemps (250€)</option>
+    </select>
+
+    <h2>Budget restant : <span id="budget">Chargement...</span> €</h2>
+
     <input type="number" id="amount" placeholder="Montant à déduire">
     <button onclick="deduireMontant()">Déduire</button>
-    
+
     <h3>Historique des dépenses :</h3>
     <ul id="history"></ul>
 
     <script>
-        // 🔥 CONFIGURATION FIREBASE 🔥
+        // 🔥 CONFIGURATION FIREBASE
         const firebaseConfig = {
             apiKey: "AIzaSyBaNNWoRNUC7d7N-Lt16Gu-Sv1k...",
             authDomain: "carrefouratelier.firebaseapp.com",
@@ -43,44 +54,76 @@
         const db = firebase.firestore();
         const docRef = db.collection("budgets").doc("global");
 
+        // ✅ Budgets de base avec les bons montants
+        const budgetsParDefaut = {
+            horsVacances: 800,
+            adosHiver: 250,
+            enfantsHiver: 250,
+            adosPrintemps: 250,
+            enfantsPrintemps: 250,
+            historique: {}
+        };
+
+        let budgets = { ...budgetsParDefaut };
+
         // ✅ Charger le budget depuis Firestore
         async function chargerBudget() {
+            const selectedBudget = document.getElementById("budgetSelection").value;
             const doc = await docRef.get();
+            
             if (doc.exists) {
-                const data = doc.data();
-                document.getElementById("budget").textContent = data.montant;
-                afficherHistorique(data.historique);
+                budgets = doc.data();
             } else {
-                await docRef.set({ montant: 800, historique: [] });
-                document.getElementById("budget").textContent = 800;
+                await docRef.set(budgetsParDefaut);
+                budgets = { ...budgetsParDefaut };
             }
+
+            document.getElementById("budget").textContent = budgets[selectedBudget];
+            afficherHistorique(selectedBudget);
         }
 
-        // ✅ Fonction pour déduire un montant
+        // ✅ Déduire un montant
         async function deduireMontant() {
+            const selectedBudget = document.getElementById("budgetSelection").value;
             let amount = parseFloat(document.getElementById("amount").value);
             if (isNaN(amount) || amount <= 0) return;
-            
-            const doc = await docRef.get();
-            let data = doc.data();
-            data.montant -= amount;
-            data.historique.push(`- ${amount}€`);
-            await docRef.set(data);
 
-            document.getElementById("budget").textContent = data.montant;
-            afficherHistorique(data.historique);
+            budgets[selectedBudget] -= amount;
+            if (!budgets.historique[selectedBudget]) {
+                budgets.historique[selectedBudget] = [];
+            }
+            budgets.historique[selectedBudget].push(`- ${amount}€`);
+
+            await docRef.set(budgets);
+            document.getElementById("budget").textContent = budgets[selectedBudget];
+            afficherHistorique(selectedBudget);
             document.getElementById("amount").value = "";
         }
 
         // ✅ Afficher l'historique des dépenses
-        function afficherHistorique(historique) {
+        function afficherHistorique(selectedBudget) {
             const list = document.getElementById("history");
             list.innerHTML = "";
-            historique.forEach(item => {
+            const historique = budgets.historique[selectedBudget] || [];
+            
+            historique.forEach((item, index) => {
                 let li = document.createElement("li");
-                li.textContent = item;
+                li.innerHTML = `${item} <button onclick="annulerDepense('${selectedBudget}', ${index})">Annuler</button>`;
                 list.appendChild(li);
             });
+        }
+
+        // ✅ Annuler une dépense avec confirmation
+        async function annulerDepense(selectedBudget, index) {
+            if (!confirm("Êtes-vous sûr de vouloir supprimer cette dépense ?")) return;
+
+            let montantAnnule = parseFloat(budgets.historique[selectedBudget][index].replace("- ", "").replace("€", ""));
+            budgets[selectedBudget] += montantAnnule;
+            budgets.historique[selectedBudget].splice(index, 1);
+
+            await docRef.set(budgets);
+            document.getElementById("budget").textContent = budgets[selectedBudget];
+            afficherHistorique(selectedBudget);
         }
 
         // Charger les données Firestore au démarrage
