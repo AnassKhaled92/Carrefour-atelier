@@ -27,22 +27,17 @@
     <div class="budget-total">💰 Montant total du bon : <span id="totalBudget">1800</span> €</div>
 
     <div class="container">
-        <!-- Menu principal -->
-        <div id="menuSelection" class="buttons">
-            <h2>Choisissez une période :</h2>
-            <button onclick="selectCategory('horsVacances')">Hors vacances (800€)</button>
-            <button onclick="selectCategory('vacancesHiver')">Vacances Hiver (500€)</button>
-            <button onclick="selectCategory('vacancesPrintemps')">Vacances Printemps (500€)</button>
-        </div>
+        <h2>Choisissez une période :</h2>
+        <button onclick="selectCategory('horsVacances')">Hors vacances (800€)</button>
+        <button onclick="selectCategory('vacancesHiver')">Vacances Hiver (500€)</button>
+        <button onclick="selectCategory('vacancesPrintemps')">Vacances Printemps (500€)</button>
 
-        <!-- Sélection du club -->
         <div id="clubSelection" class="club-buttons">
             <h3>Choisissez un club :</h3>
-            <button id="clubAdosBtn" onclick="selectClub('ados')">Club Ados (250€)</button>
-            <button id="clubEnfantsBtn" onclick="selectClub('enfants')">Club Enfants (250€)</button>
+            <button onclick="selectClub('ados')">Club Ados (250€)</button>
+            <button onclick="selectClub('enfants')">Club Enfants (250€)</button>
         </div>
 
-        <!-- Budget et actions -->
         <div id="budgetSection" class="budget-section">
             <h2>Budget restant : <span id="budget">---</span> €</h2>
             <input type="number" id="amount" placeholder="Montant à déduire">
@@ -70,7 +65,6 @@
         const db = firebase.firestore();
         const docRef = db.collection("budgets").doc("global");
 
-        // ✅ Budgets de base
         let budgets = {
             total: 1800,
             horsVacances: 800,
@@ -90,13 +84,12 @@
                 await docRef.set(budgets);
             }
             updateBudgetDisplay();
+            afficherHistorique();
         }
 
         function selectCategory(category) {
             selectedCategory = category;
             selectedClub = null;
-
-            document.getElementById("menuSelection").style.display = "none";
             document.getElementById("clubSelection").style.display = (category === "vacancesHiver" || category === "vacancesPrintemps") ? "block" : "none";
             document.getElementById("budgetSection").style.display = (category === "horsVacances") ? "block" : "none";
             updateBudgetDisplay();
@@ -106,23 +99,14 @@
             selectedClub = club;
             document.getElementById("clubSelection").style.display = "none";
             document.getElementById("budgetSection").style.display = "block";
-
-            if (club === "ados") {
-                document.getElementById("clubEnfantsBtn").style.display = "none";
-            } else {
-                document.getElementById("clubAdosBtn").style.display = "none";
-            }
             updateBudgetDisplay();
         }
 
         function retourMenu() {
             selectedCategory = null;
             selectedClub = null;
-            document.getElementById("menuSelection").style.display = "block";
             document.getElementById("clubSelection").style.display = "none";
             document.getElementById("budgetSection").style.display = "none";
-            document.getElementById("clubAdosBtn").style.display = "inline-block";
-            document.getElementById("clubEnfantsBtn").style.display = "inline-block";
         }
 
         async function updateBudgetDisplay() {
@@ -132,8 +116,6 @@
                     budgetRestant = budgets.horsVacances;
                 } else if (selectedCategory && selectedClub) {
                     budgetRestant = budgets[selectedCategory][selectedClub];
-                } else {
-                    budgetRestant = budgets[selectedCategory].total;
                 }
             }
             document.getElementById("budget").textContent = budgetRestant;
@@ -144,6 +126,9 @@
             let amount = parseFloat(document.getElementById("amount").value);
             if (isNaN(amount) || amount <= 0 || !selectedCategory) return;
 
+            let now = new Date();
+            let timestamp = now.toLocaleDateString() + " " + now.toLocaleTimeString();
+
             if (selectedCategory === "horsVacances") {
                 budgets.horsVacances -= amount;
             } else if (selectedCategory && selectedClub) {
@@ -151,12 +136,22 @@
                 budgets[selectedCategory].total -= amount;
             }
             budgets.total -= amount;
-            budgets.historique.push(`- ${amount}€ (${selectedCategory}${selectedClub ? " - " + selectedClub : ""})`);
+            budgets.historique.push(`${timestamp} - ${amount}€ (${selectedCategory}${selectedClub ? " - " + selectedClub : ""})`);
 
             await docRef.set(budgets);
             updateBudgetDisplay();
             afficherHistorique();
             document.getElementById("amount").value = "";
+        }
+
+        function afficherHistorique() {
+            const list = document.getElementById("history");
+            list.innerHTML = "";
+            budgets.historique.forEach(item => {
+                let li = document.createElement("li");
+                li.textContent = item;
+                list.appendChild(li);
+            });
         }
 
         loadBudgets();
