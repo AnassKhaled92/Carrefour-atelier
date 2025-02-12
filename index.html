@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Carrefour l'Atelier - Budget (multi-utilisateurs)</title>
+  <title>Carrefour l'Atelier - Budget (Partagé)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <!-- Scripts Firebase -->
@@ -150,7 +150,7 @@
 
   <script>
     // ------------------------------------------------------
-    // 1. Configuration Firebase
+    // 1. Configuration Firebase (METS TES VRAIES VALEURS ICI)
     // ------------------------------------------------------
     const firebaseConfig = {
       apiKey: "TA_CLE_API_ICI",
@@ -169,7 +169,6 @@
     // 2. Référence Firestore
     // ------------------------------------------------------
     // On suppose que tu as une collection "budgets" et un document "global".
-    // Tous les utilisateurs pointeront vers CE document.
     const docRef = db.collection("budgets").doc("global");
 
     // ------------------------------------------------------
@@ -191,16 +190,13 @@
     // ------------------------------------------------------
     // 4. Écoute en temps réel (onSnapshot)
     // ------------------------------------------------------
-    // Dès que la BDD change (qu'un utilisateur fait une modif),
-    // cette fonction est rappelée automatiquement.
     docRef.onSnapshot(async (docSnap) => {
       if (!docSnap.exists) {
-        // Si le doc n’existe pas encore, on le crée une fois dans Firestore
+        // Si le doc n’existe pas encore, on le crée
         await docRef.set(budgets);
       } else {
         budgets = docSnap.data();
       }
-      // On met à jour l’interface pour tout le monde
       refreshUI();
     }, (error) => {
       console.error("Erreur de synchronisation en temps réel :", error);
@@ -215,6 +211,9 @@
       document.getElementById("categoryTitle").classList.remove("hidden");
       document.getElementById("budgetRestant").classList.remove("hidden");
       document.getElementById("deductionSection").classList.remove("hidden");
+
+      // Vide le champ input à chaque changement de catégorie :
+      document.getElementById("amountInput").value = "";
 
       refreshUI();
     }
@@ -233,23 +232,24 @@
         return;
       }
 
-      // Mise à jour en local (catégorie et total)
+      // Mise à jour en local
       budgets.categories[selectedCategory] -= amountValue;
       budgets.total -= amountValue;
 
       // On ajoute une entrée dans l'historique
       const now = new Date();
       const expense = {
-        timestamp: now.toLocaleString(),  // "13/02/2025 10:15:30"
+        timestamp: now.toLocaleString(),
         category: selectedCategory,
         amount: amountValue,
         type: "deduction"
       };
       budgets.historique.push(expense);
 
-      // On sauvegarde en base => déclenchera onSnapshot pour tout le monde
+      // Sauvegarde Firestore => déclenche onSnapshot pour tout le monde
       try {
         await docRef.set(budgets);
+        // Vide l'input après la sauvegarde
         amountInput.value = "";
       } catch (error) {
         console.error("Erreur lors de la sauvegarde Firestore:", error);
@@ -265,17 +265,16 @@
       const depense = budgets.historique[index];
       if (!depense) return;
 
-      // Si c’est une "deduction", on rend l’argent à la bonne catégorie
+      // On remet l'argent à la catégorie concernée (si c'était une deduction)
       if (depense.type === "deduction") {
         budgets.categories[depense.category] += depense.amount;
         budgets.total += depense.amount;
       }
-      // Tu pourrais ajouter ici un else if si tu gères un autre type (ex: "ajout" ?)
 
       // On enlève la dépense de l’historique
       budgets.historique.splice(index, 1);
 
-      // Sauvegarde => déclenchera onSnapshot pour tout le monde
+      // Sauvegarde => déclenche onSnapshot pour tout le monde
       try {
         await docRef.set(budgets);
       } catch (error) {
@@ -292,7 +291,7 @@
 
       // Affiche le budget de la catégorie sélectionnée, si on en a une
       if (selectedCategory) {
-        document.getElementById("budgetCategory").textContent = 
+        document.getElementById("budgetCategory").textContent =
           budgets.categories[selectedCategory] ?? "--";
       }
 
@@ -304,8 +303,7 @@
       const historiqueInverse = [...budgets.historique].reverse();
 
       historiqueInverse.forEach((item, idx) => {
-        const realIndex = budgets.historique.length - 1 - idx; 
-        // => index exact dans le tableau d'origine
+        const realIndex = budgets.historique.length - 1 - idx;
 
         const li = document.createElement("li");
         li.textContent = `${item.timestamp} - ${item.amount} € - [${item.category}]`;
