@@ -1,209 +1,325 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>Carrefour l'Atelier - Budget</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>Carrefour l'Atelier - Budget (multi-utilisateurs)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-firestore-compat.js"></script>
+  <!-- Scripts Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-firestore-compat.js"></script>
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 20px;
-            background-color: #f4f4f4;
-        }
-        h1 {
-            color: #007bff;
-        }
-        .budget-total {
-            font-size: 24px;
-            font-weight: bold;
-            color: #28a745;
-            margin-bottom: 20px;
-        }
-        .container {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            max-width: 450px;
-            margin: auto;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        .buttons {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .buttons button {
-            padding: 12px;
-            font-size: 18px;
-            cursor: pointer;
-            border: none;
-            background: #007bff;
-            color: white;
-            border-radius: 5px;
-            transition: 0.3s;
-        }
-        .buttons button:hover {
-            background: #0056b3;
-        }
-        .budget-section {
-            display: none;
-            margin-top: 10px;
-        }
-        input, button {
-            padding: 12px;
-            margin: 5px;
-            font-size: 18px;
-            width: 80%;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-        }
-        ul {
-            list-style-type: none;
-            padding: 0;
-            text-align: left;
-        }
-        ul li {
-            background: #f8f9fa;
-            padding: 10px;
-            margin: 5px;
-            border-radius: 5px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .delete-btn {
-            background: red;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            cursor: pointer;
-            border-radius: 5px;
-        }
-        .delete-btn:hover {
-            background: darkred;
-        }
-    </style>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f4f4f4;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      color: #007bff;
+    }
+    .container {
+      max-width: 500px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+    }
+    .budget-total {
+      font-size: 20px;
+      font-weight: bold;
+      color: #28a745;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+    .categories {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .categories button {
+      font-size: 16px;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      background: #007bff;
+      color: #fff;
+      cursor: pointer;
+    }
+    .categories button:hover {
+      background: #0056b3;
+    }
+    #categoryTitle {
+      font-weight: bold;
+      margin-top: 20px;
+      text-align: center;
+    }
+    #budgetRestant {
+      font-size: 16px;
+      margin-top: 5px;
+      text-align: center;
+    }
+    .flex-row {
+      display: flex;
+      gap: 10px;
+      margin: 20px 0;
+      justify-content: center;
+    }
+    .flex-row input {
+      flex: 1;
+      padding: 10px;
+      font-size: 16px;
+    }
+    .flex-row button {
+      padding: 10px 15px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      background: #28a745;
+      color: #fff;
+      cursor: pointer;
+    }
+    .flex-row button:hover {
+      background: #218838;
+    }
+    #historyList {
+      list-style: none;
+      padding: 0;
+      margin: 20px 0;
+    }
+    #historyList li {
+      background: #f8f9fa;
+      margin: 5px 0;
+      padding: 10px;
+      border-radius: 5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .delete-btn {
+      background: red;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    .delete-btn:hover {
+      background: darkred;
+    }
+    /* Caché par défaut, on l’affiche quand une catégorie est choisie */
+    .hidden {
+      display: none;
+    }
+  </style>
 </head>
+
 <body>
-    <h1>Carrefour l'Atelier - Budget</h1>
-    <div class="budget-total">💰 Montant total : <span id="totalBudget">1800</span> €</div>
+  <h1>Carrefour l'Atelier - Budget (Partagé)</h1>
 
-    <div class="container">
-        <h2>Choisissez une période :</h2>
-        <div class="buttons">
-            <button onclick="selectCategory('horsVacances')">Hors vacances (800€)</button>
-            <button onclick="selectCategory('vacancesHiver')">Vacances Hiver (500€)</button>
-            <button onclick="selectCategory('vacancesPrintemps')">Vacances Printemps (500€)</button>
-        </div>
-
-        <div id="budgetSection" class="budget-section">
-            <h2>Budget restant : <span id="budget">---</span> €</h2>
-            <input type="number" id="amount" placeholder="Montant à déduire">
-            <button onclick="deduireMontant()">Déduire</button>
-
-            <h3>Historique des dépenses :</h3>
-            <ul id="history"></ul>
-            <button onclick="retourMenu()">⬅ Retour</button>
-        </div>
+  <div class="container">
+    <div class="budget-total">
+      Montant total : <span id="totalBudget">--</span> €
     </div>
 
-    <script>
-        // 🔥 CONFIGURATION FIREBASE
-        const firebaseConfig = {
-            apiKey: "TA_CLE_API_ICI",
-            authDomain: "ton-projet.firebaseapp.com",
-            projectId: "ton-projet",
-            storageBucket: "ton-projet.appspot.com",
-            messagingSenderId: "1234567890",
-            appId: "1:1234567890:web:abcdef123456"
-        };
+    <!-- Liste des catégories -->
+    <div class="categories">
+      <button onclick="selectCategory('horsVacances')">Hors vacances</button>
+      <button onclick="selectCategory('vacancesHiver')">Vacances Hiver</button>
+      <button onclick="selectCategory('vacancesPrintemps')">Vacances Printemps</button>
+    </div>
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const docRef = db.collection("budgets").doc("global");
+    <!-- Affiche la catégorie sélectionnée et formulaire de déduction -->
+    <h2 id="categoryTitle" class="hidden"></h2>
+    <h3 id="budgetRestant" class="hidden">
+      Budget restant : <span id="budgetCategory">--</span> €
+    </h3>
 
-        let budgets = {
-            total: 1800,
-            horsVacances: 800,
-            vacancesHiver: 500,
-            vacancesPrintemps: 500,
-            historique: []
-        };
+    <div id="deductionSection" class="hidden">
+      <div class="flex-row">
+        <input type="number" id="amountInput" placeholder="Montant à déduire">
+        <button onclick="deduireMontant()">Déduire</button>
+      </div>
+    </div>
 
-        let selectedCategory = null;
+    <ul id="historyList"></ul>
+  </div>
 
-        async function loadBudgets() {
-            const doc = await docRef.get();
-            if (doc.exists) {
-                budgets = doc.data();
-            } else {
-                await docRef.set(budgets);
-            }
-            updateBudgetDisplay();
-            afficherHistorique();
-        }
+  <script>
+    // ------------------------------------------------------
+    // 1. Configuration Firebase
+    // ------------------------------------------------------
+    const firebaseConfig = {
+      apiKey: "TA_CLE_API_ICI",
+      authDomain: "ton-projet.firebaseapp.com",
+      projectId: "ton-projet",
+      storageBucket: "ton-projet.appspot.com",
+      messagingSenderId: "1234567890",
+      appId: "1:1234567890:web:abcdef123456"
+    };
 
-        function selectCategory(category) {
-            selectedCategory = category;
-            document.getElementById("budgetSection").style.display = "block";
-            updateBudgetDisplay();
-        }
+    // Initialisation de Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-        function retourMenu() {
-            selectedCategory = null;
-            document.getElementById("budgetSection").style.display = "none";
-        }
+    // ------------------------------------------------------
+    // 2. Référence Firestore
+    // ------------------------------------------------------
+    // On suppose que tu as une collection "budgets" et un document "global".
+    // Tous les utilisateurs pointeront vers CE document.
+    const docRef = db.collection("budgets").doc("global");
 
-        async function deduireMontant() {
-            let amount = parseFloat(document.getElementById("amount").value);
-            if (isNaN(amount) || amount <= 0 || !selectedCategory) return;
+    // ------------------------------------------------------
+    // 3. Variables globales (défaut local avant la synchro)
+    // ------------------------------------------------------
+    let budgets = {
+      total: 1800,
+      categories: {
+        horsVacances: 800,
+        vacancesHiver: 500,
+        vacancesPrintemps: 500
+      },
+      historique: []
+    };
 
-            budgets[selectedCategory] -= amount;
-            budgets.total -= amount;
+    // On garde la catégorie sélectionnée
+    let selectedCategory = null;
 
-            let now = new Date();
-            let timestamp = now.toLocaleString();
-            budgets.historique.push(`${timestamp} - ${amount}€ (${selectedCategory})`);
+    // ------------------------------------------------------
+    // 4. Écoute en temps réel (onSnapshot)
+    // ------------------------------------------------------
+    // Dès que la BDD change (qu'un utilisateur fait une modif),
+    // cette fonction est rappelée automatiquement.
+    docRef.onSnapshot(async (docSnap) => {
+      if (!docSnap.exists) {
+        // Si le doc n’existe pas encore, on le crée une fois dans Firestore
+        await docRef.set(budgets);
+      } else {
+        budgets = docSnap.data();
+      }
+      // On met à jour l’interface pour tout le monde
+      refreshUI();
+    }, (error) => {
+      console.error("Erreur de synchronisation en temps réel :", error);
+    });
 
-            await docRef.set(budgets);
-            updateBudgetDisplay();
-            afficherHistorique();
-            document.getElementById("amount").value = "";
-        }
+    // ------------------------------------------------------
+    // 5. Sélection d'une catégorie
+    // ------------------------------------------------------
+    function selectCategory(category) {
+      selectedCategory = category;
+      document.getElementById("categoryTitle").textContent = `Catégorie : ${category}`;
+      document.getElementById("categoryTitle").classList.remove("hidden");
+      document.getElementById("budgetRestant").classList.remove("hidden");
+      document.getElementById("deductionSection").classList.remove("hidden");
 
-        function afficherHistorique() {
-            const list = document.getElementById("history");
-            list.innerHTML = "";
-            budgets.historique.forEach((item, index) => {
-                let li = document.createElement("li");
-                li.innerHTML = `${item} <button class="delete-btn" onclick="annulerDepense(${index})">X</button>`;
-                list.appendChild(li);
-            });
-        }
+      refreshUI();
+    }
 
-        async function annulerDepense(index) {
-            if (!confirm("Êtes-vous sûr de vouloir supprimer cette dépense ?")) return;
-            let montantAnnule = parseFloat(budgets.historique[index].match(/- (\d+)/)[1]);
-            budgets.total += montantAnnule;
-            budgets.historique.splice(index, 1);
-            await docRef.set(budgets);
-            updateBudgetDisplay();
-            afficherHistorique();
-        }
+    // ------------------------------------------------------
+    // 6. Déduire un montant
+    // ------------------------------------------------------
+    async function deduireMontant() {
+      if (!selectedCategory) return;
 
-        async function updateBudgetDisplay() {
-            document.getElementById("budget").textContent = budgets[selectedCategory];
-            document.getElementById("totalBudget").textContent = budgets.total;
-        }
+      const amountInput = document.getElementById("amountInput");
+      const amountValue = parseFloat(amountInput.value);
 
-        loadBudgets();
-    </script>
+      if (isNaN(amountValue) || amountValue <= 0) {
+        alert("Veuillez saisir un montant valide.");
+        return;
+      }
+
+      // Mise à jour en local (catégorie et total)
+      budgets.categories[selectedCategory] -= amountValue;
+      budgets.total -= amountValue;
+
+      // On ajoute une entrée dans l'historique
+      const now = new Date();
+      const expense = {
+        timestamp: now.toLocaleString(),  // "13/02/2025 10:15:30"
+        category: selectedCategory,
+        amount: amountValue,
+        type: "deduction"
+      };
+      budgets.historique.push(expense);
+
+      // On sauvegarde en base => déclenchera onSnapshot pour tout le monde
+      try {
+        await docRef.set(budgets);
+        amountInput.value = "";
+      } catch (error) {
+        console.error("Erreur lors de la sauvegarde Firestore:", error);
+      }
+    }
+
+    // ------------------------------------------------------
+    // 7. Annuler / supprimer une dépense
+    // ------------------------------------------------------
+    async function annulerDepense(index) {
+      if (!confirm("Êtes-vous sûr de vouloir annuler cette dépense ?")) return;
+
+      const depense = budgets.historique[index];
+      if (!depense) return;
+
+      // Si c’est une "deduction", on rend l’argent à la bonne catégorie
+      if (depense.type === "deduction") {
+        budgets.categories[depense.category] += depense.amount;
+        budgets.total += depense.amount;
+      }
+      // Tu pourrais ajouter ici un else if si tu gères un autre type (ex: "ajout" ?)
+
+      // On enlève la dépense de l’historique
+      budgets.historique.splice(index, 1);
+
+      // Sauvegarde => déclenchera onSnapshot pour tout le monde
+      try {
+        await docRef.set(budgets);
+      } catch (error) {
+        console.error("Erreur lors de la sauvegarde Firestore:", error);
+      }
+    }
+
+    // ------------------------------------------------------
+    // 8. Rafraîchir l'interface
+    // ------------------------------------------------------
+    function refreshUI() {
+      // Affiche le total
+      document.getElementById("totalBudget").textContent = budgets.total ?? "--";
+
+      // Affiche le budget de la catégorie sélectionnée, si on en a une
+      if (selectedCategory) {
+        document.getElementById("budgetCategory").textContent = 
+          budgets.categories[selectedCategory] ?? "--";
+      }
+
+      // Met à jour la liste de l’historique
+      const historyList = document.getElementById("historyList");
+      historyList.innerHTML = "";
+
+      // Pour montrer les plus récentes dépenses en haut de la liste (optionnel)
+      const historiqueInverse = [...budgets.historique].reverse();
+
+      historiqueInverse.forEach((item, idx) => {
+        const realIndex = budgets.historique.length - 1 - idx; 
+        // => index exact dans le tableau d'origine
+
+        const li = document.createElement("li");
+        li.textContent = `${item.timestamp} - ${item.amount} € - [${item.category}]`;
+
+        // Bouton de suppression
+        const deleteBtn = document.createElement("button");
+        deleteBtn.classList.add("delete-btn");
+        deleteBtn.textContent = "X";
+        deleteBtn.onclick = () => annulerDepense(realIndex);
+
+        li.appendChild(deleteBtn);
+        historyList.appendChild(li);
+      });
+    }
+  </script>
 </body>
 </html>
