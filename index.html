@@ -14,10 +14,10 @@
         h1 { color: #007bff; }
         .budget-total { font-size: 24px; font-weight: bold; margin-bottom: 20px; }
         .container { background: white; padding: 20px; border-radius: 10px; max-width: 400px; margin: auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        .buttons { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
+        .buttons { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
         .buttons button { padding: 10px; font-size: 16px; cursor: pointer; border: none; background: #007bff; color: white; border-radius: 5px; }
         .buttons button:hover { background: #0056b3; }
-        .club-buttons { display: none; margin-top: 10px; }
+        .club-buttons, .budget-section { display: none; margin-top: 10px; }
         input, button { padding: 10px; margin: 5px; font-size: 16px; }
         ul { list-style-type: none; padding: 0; }
     </style>
@@ -27,26 +27,31 @@
     <div class="budget-total">💰 Montant total du bon : <span id="totalBudget">1800</span> €</div>
 
     <div class="container">
-        <h2>Choisissez une période :</h2>
-        <div class="buttons">
+        <!-- Menu principal -->
+        <div id="menuSelection" class="buttons">
+            <h2>Choisissez une période :</h2>
             <button onclick="selectCategory('horsVacances')">Hors vacances (800€)</button>
             <button onclick="selectCategory('vacancesHiver')">Vacances Hiver (500€)</button>
             <button onclick="selectCategory('vacancesPrintemps')">Vacances Printemps (500€)</button>
         </div>
 
+        <!-- Sélection du club -->
         <div id="clubSelection" class="club-buttons">
             <h3>Choisissez un club :</h3>
             <button onclick="selectClub('ados')">Club Ados (250€)</button>
             <button onclick="selectClub('enfants')">Club Enfants (250€)</button>
         </div>
 
-        <h2>Budget restant : <span id="budget">---</span> €</h2>
+        <!-- Budget et actions -->
+        <div id="budgetSection" class="budget-section">
+            <h2>Budget restant : <span id="budget">---</span> €</h2>
+            <input type="number" id="amount" placeholder="Montant à déduire">
+            <button onclick="deduireMontant()">Déduire</button>
 
-        <input type="number" id="amount" placeholder="Montant à déduire">
-        <button onclick="deduireMontant()">Déduire</button>
-
-        <h3>Historique des dépenses :</h3>
-        <ul id="history"></ul>
+            <h3>Historique des dépenses :</h3>
+            <ul id="history"></ul>
+            <button onclick="retourMenu()">⬅ Retour</button>
+        </div>
     </div>
 
     <script>
@@ -78,16 +83,34 @@
         let selectedCategory = null;
         let selectedClub = null;
 
-        async function selectCategory(category) {
+        function selectCategory(category) {
             selectedCategory = category;
             selectedClub = null;
-            document.getElementById("clubSelection").style.display = (category === "vacancesHiver" || category === "vacancesPrintemps") ? "block" : "none";
-            updateBudgetDisplay();
+
+            // Masquer le menu principal et afficher les clubs ou budget
+            document.getElementById("menuSelection").style.display = "none";
+
+            if (category === "vacancesHiver" || category === "vacancesPrintemps") {
+                document.getElementById("clubSelection").style.display = "block";
+            } else {
+                document.getElementById("budgetSection").style.display = "block";
+                updateBudgetDisplay();
+            }
         }
 
         function selectClub(club) {
             selectedClub = club;
+            document.getElementById("clubSelection").style.display = "none";
+            document.getElementById("budgetSection").style.display = "block";
             updateBudgetDisplay();
+        }
+
+        function retourMenu() {
+            selectedCategory = null;
+            selectedClub = null;
+            document.getElementById("menuSelection").style.display = "block";
+            document.getElementById("clubSelection").style.display = "none";
+            document.getElementById("budgetSection").style.display = "none";
         }
 
         async function updateBudgetDisplay() {
@@ -136,11 +159,9 @@
 
         async function annulerDepense(index) {
             if (!confirm("Êtes-vous sûr de vouloir supprimer cette dépense ?")) return;
-
             let montantAnnule = parseFloat(budgets.historique[index].match(/- (\d+)/)[1]);
             budgets.total += montantAnnule;
             budgets.historique.splice(index, 1);
-
             await docRef.set(budgets);
             updateBudgetDisplay();
             afficherHistorique();
