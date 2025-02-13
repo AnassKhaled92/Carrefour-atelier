@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Carrefour Budget (Test)</title>
+  <title>Carrefour l'Atelier - Budget (Final)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <!-- SCRIPTS FIREBASE (versions "compat" pour simplifier) -->
@@ -10,11 +10,16 @@
   <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-firestore-compat.js"></script>
 
   <style>
+    /* --- Mise en forme de base --- */
     body {
       font-family: Arial, sans-serif;
       margin: 20px;
       background-color: #f4f4f4;
       color: #333;
+    }
+    h1 {
+      text-align: center;
+      color: #007bff;
     }
     .container {
       max-width: 500px;
@@ -23,52 +28,114 @@
       padding: 20px;
       border-radius: 8px;
     }
-    h1 { text-align: center; color: #007bff; }
-    .budget-total { font-size: 20px; font-weight: bold; color: #28a745; margin-bottom: 15px; text-align: center; }
-    .categories { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-    .categories button {
-      font-size: 16px; padding: 10px; border: none; border-radius: 5px;
-      background: #007bff; color: #fff; cursor: pointer;
+    .budget-total {
+      font-size: 20px;
+      font-weight: bold;
+      color: #28a745;
+      margin-bottom: 15px;
+      text-align: center;
     }
-    .categories button:hover { background: #0056b3; }
-    .hidden { display: none; }
-    .flex-row { display: flex; gap: 10px; margin: 20px 0; justify-content: center; }
+    .categories {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .categories button {
+      font-size: 16px;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      background: #007bff;
+      color: #fff;
+      cursor: pointer;
+    }
+    .categories button:hover {
+      background: #0056b3;
+    }
+    #categoryTitle {
+      font-weight: bold;
+      margin-top: 20px;
+      text-align: center;
+    }
+    #budgetRestant {
+      font-size: 16px;
+      margin-top: 5px;
+      text-align: center;
+    }
+    .flex-row {
+      display: flex;
+      gap: 10px;
+      margin: 20px 0;
+      justify-content: center;
+    }
     .flex-row input {
-      flex: 1; padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc;
+      flex: 1;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
     }
     .flex-row button {
-      padding: 10px 15px; font-size: 16px; border: none; border-radius: 5px;
-      background: #28a745; color: #fff; cursor: pointer;
+      padding: 10px 15px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      background: #28a745;
+      color: #fff;
+      cursor: pointer;
     }
-    .flex-row button:hover { background: #218838; }
-    #historyList { list-style: none; padding: 0; margin: 20px 0; }
+    .flex-row button:hover {
+      background: #218838;
+    }
+    #historyList {
+      list-style: none;
+      padding: 0;
+      margin: 20px 0;
+    }
     #historyList li {
-      background: #f8f9fa; margin: 5px 0; padding: 10px; border-radius: 5px;
-      display: flex; justify-content: space-between; align-items: center;
+      background: #f8f9fa;
+      margin: 5px 0;
+      padding: 10px;
+      border-radius: 5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
     .delete-btn {
-      background: red; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 5px;
+      background: red;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+      border-radius: 5px;
     }
-    .delete-btn:hover { background: darkred; }
+    .delete-btn:hover {
+      background: darkred;
+    }
+    /* Éléments cachés par défaut */
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
 
 <body>
-  <h1>Carrefour Budget (Test)</h1>
+  <h1>Carrefour l'Atelier - Budget (Final)</h1>
 
   <div class="container">
     <div class="budget-total">
       Montant total : <span id="totalBudget">--</span> €
     </div>
 
-    <!-- BOUTONS DE CATEGORIE -->
+    <!-- Boutons pour choisir la catégorie -->
     <div class="categories">
       <button onclick="selectCategory('horsVacances')">Hors vacances</button>
       <button onclick="selectCategory('vacancesHiver')">Vacances Hiver</button>
       <button onclick="selectCategory('vacancesPrintemps')">Vacances Printemps</button>
     </div>
 
-    <!-- INFOS ET FORMULAIRE POUR LA CATEGORIE SELECTIONNEE -->
+    <!-- Cette partie s'affiche quand on a choisi une catégorie -->
     <h2 id="categoryTitle" class="hidden"></h2>
     <h3 id="budgetRestant" class="hidden">
       Budget restant : <span id="budgetCategory">--</span> €
@@ -81,29 +148,38 @@
       </div>
     </div>
 
+    <!-- Historique des opérations (dépenses, etc.) -->
     <ul id="historyList"></ul>
   </div>
 
   <script>
-    console.log(">> Script JS chargé avec succès.");
+    console.log(">> Script JavaScript chargé. Début initialisation Firebase...");
 
-    // 1) METS TES VRAIES CLES FIREBASE ICI !
-const firebaseConfig = {
-  apiKey: "AIzaSyBaNNWoRNUC7d7N-Lt16Gu-Sv1K2TncWqg",
-  authDomain: "carrefouratelier.firebaseapp.com",
-  projectId: "carrefouratelier",
-  storageBucket: "carrefouratelier.firebasestorage.app",
-  messagingSenderId: "400841694123",
-  appId: "1:400841694123:web:fd37ae0dbef2d0d21d10ee"
-};
-    // 2) INITIALISER FIREBASE
+    // --------------------------------------------------------
+    // A) CONFIGURATION FIREBASE (TES CLÉS)
+    // --------------------------------------------------------
+    const firebaseConfig = {
+      apiKey: "AIzaSyBaNNWoRNUC7d7N-Lt16Gu-Sv1K2TncWqg",
+      authDomain: "carrefouratelier.firebaseapp.com",
+      projectId: "carrefouratelier",
+      storageBucket: "carrefouratelier.firebasestorage.app",
+      messagingSenderId: "400841694123",
+      appId: "1:400841694123:web:fd37ae0dbef2d0d21d10ee"
+    };
+
+    // Initialisation de Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // 3) REFERENCE AU DOCUMENT "global" DANS LA COLLECTION "budgets"
+    // --------------------------------------------------------
+    // B) DOCUMENT DANS FIRESTORE
+    // --------------------------------------------------------
+    // On utilise la collection "budgets" et le doc "global"
     const docRef = db.collection("budgets").doc("global");
 
-    // 4) Structure par défaut au cas où Firestore est vide
+    // --------------------------------------------------------
+    // C) VARIABLES GLOBALES (VALEURS PAR DÉFAUT)
+    // --------------------------------------------------------
     let budgets = {
       total: 1800,
       categories: {
@@ -114,46 +190,53 @@ const firebaseConfig = {
       historique: []
     };
 
+    // Catégorie sélectionnée
     let selectedCategory = null;
 
-    // 5) SYNCHRO TEMPS REEL AVEC FIRESTORE
+    // --------------------------------------------------------
+    // D) SYNCHRO TEMPS RÉEL (onSnapshot)
+    // --------------------------------------------------------
     docRef.onSnapshot(async (docSnap) => {
       if (!docSnap.exists) {
-        // Si le doc n'existe pas, on le crée
-        console.log(">> Document 'budgets/global' n'existe pas, on le crée.");
+        // Si le doc n'existe pas, on le crée une fois
+        console.log(">> Le document 'budgets/global' n'existe pas : on le crée.");
         await docRef.set(budgets);
       } else {
-        // On récupère les données du doc
+        // Sinon, on récupère ses données
         budgets = docSnap.data();
         console.log(">> Données Firestore reçues :", budgets);
       }
+      // On met à jour l'interface
       refreshUI();
     }, (error) => {
       console.error(">> Erreur onSnapshot :", error);
-      alert("Erreur onSnapshot : " + error);
+      alert("Erreur Firestore onSnapshot : " + error);
     });
 
-    // 6) CHOISIR UNE CATEGORIE
+    // --------------------------------------------------------
+    // E) SÉLECTION D'UNE CATÉGORIE
+    // --------------------------------------------------------
     function selectCategory(category) {
       console.log(">> Catégorie sélectionnée :", category);
       selectedCategory = category;
 
       document.getElementById("categoryTitle").textContent = "Catégorie : " + category;
       document.getElementById("categoryTitle").classList.remove("hidden");
-
       document.getElementById("budgetRestant").classList.remove("hidden");
       document.getElementById("deductionSection").classList.remove("hidden");
 
-      // On vide l'input
+      // Vide l'input à chaque fois qu'on change de catégorie
       document.getElementById("amountInput").value = "";
 
       refreshUI();
     }
 
-    // 7) DEDUIRE UN MONTANT
+    // --------------------------------------------------------
+    // F) DÉDUIRE UN MONTANT
+    // --------------------------------------------------------
     async function deduireMontant() {
       if (!selectedCategory) {
-        console.log(">> Pas de catégorie sélectionnée !");
+        console.warn(">> Pas de catégorie sélectionnée pour déduire !");
         return;
       }
 
@@ -165,11 +248,11 @@ const firebaseConfig = {
         return;
       }
 
-      // Mise à jour local
+      // Mise à jour en local
       budgets.categories[selectedCategory] -= amountValue;
       budgets.total -= amountValue;
 
-      // Historique
+      // On ajoute une entrée dans l'historique
       const now = new Date();
       const expense = {
         timestamp: now.toLocaleString(),
@@ -179,63 +262,72 @@ const firebaseConfig = {
       };
       budgets.historique.push(expense);
 
-      // Sauvegarde sur Firestore
-      console.log(">> On met à jour Firestore...");
+      console.log(">> Sauvegarde sur Firestore en cours...");
       try {
         await docRef.set(budgets);
-        // On vide l'input juste après
+        // Effacer l'input tout de suite après
         amountInput.value = "";
       } catch (err) {
-        console.error(">> Erreur lors du set Firestore :", err);
-        alert("Erreur set Firestore : " + err);
+        console.error(">> Erreur lors de docRef.set(budgets) :", err);
+        alert("Erreur Firestore : " + err);
       }
     }
 
-    // 8) ANNULER DEPENSE
+    // --------------------------------------------------------
+    // G) ANNULER DÉPENSE
+    // --------------------------------------------------------
     async function annulerDepense(index) {
       if (!confirm("Êtes-vous sûr de vouloir annuler cette dépense ?")) return;
 
       const depense = budgets.historique[index];
       if (!depense) return;
 
-      // On rend l'argent si c'était une deduction
+      // On rend l'argent si c'était une déduction
       if (depense.type === "deduction") {
         budgets.categories[depense.category] += depense.amount;
         budgets.total += depense.amount;
       }
 
+      // On enlève la dépense de l'historique
       budgets.historique.splice(index, 1);
 
-      // Sauvegarde Firestore
+      console.log(">> Sauvegarde après annulation en cours...");
       try {
         await docRef.set(budgets);
       } catch (err) {
-        console.error(">> Erreur lors du set Firestore :", err);
-        alert("Erreur set Firestore : " + err);
+        console.error(">> Erreur lors de la sauvegarde Firestore :", err);
+        alert("Erreur Firestore : " + err);
       }
     }
 
-    // 9) REFRESH UI
+    // --------------------------------------------------------
+    // H) RAFRAÎCHIR L'INTERFACE
+    // --------------------------------------------------------
     function refreshUI() {
-      console.log(">> refreshUI() appelé.");
+      console.log(">> refreshUI() appelé. Montant total :", budgets.total);
+      // 1) Affiche le total
       document.getElementById("totalBudget").textContent = budgets.total ?? "--";
 
+      // 2) Si une catégorie est sélectionnée, affiche son budget
       if (selectedCategory) {
         document.getElementById("budgetCategory").textContent =
           budgets.categories[selectedCategory] ?? "--";
       }
 
-      // HISTORIQUE (du plus récent au plus ancien)
+      // 3) Met à jour l'historique (afficher du plus récent au plus ancien)
       const historyList = document.getElementById("historyList");
       historyList.innerHTML = "";
 
+      // On inverse le tableau pour avoir la dernière dépense en haut
       const historiqueInverse = [...budgets.historique].reverse();
 
       historiqueInverse.forEach((item, idx) => {
         const realIndex = budgets.historique.length - 1 - idx;
+
         const li = document.createElement("li");
         li.textContent = `${item.timestamp} - ${item.amount} € - [${item.category}]`;
 
+        // Bouton pour annuler la dépense
         const deleteBtn = document.createElement("button");
         deleteBtn.classList.add("delete-btn");
         deleteBtn.textContent = "X";
