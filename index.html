@@ -126,7 +126,7 @@
 </head>
 
 <body>
-  <h1>Carrefour l'Atelier - Budget (ES Modules)</h1>
+  <h1>Carrefour l'Atelier - Budget</h1>
 
   <div class="container">
     <div class="budget-total">
@@ -176,7 +176,7 @@
       getDoc
     } from "https://www.gstatic.com/firebasejs/9.14.0/firebase-firestore.js";
 
-    console.log(">> Carrefour Budget (ES Modules) : démarrage...");
+    console.log(">> Carrefour Budget : démarrage...");
 
     /********************************************
      * 2) Configuration Firebase (tes clés)
@@ -246,7 +246,7 @@
       document.getElementById("amountInput").value = "";
 
       // Affiche ou cache la sous-catégorie ado/enfant si c'est Hiver/Printemps
-      if (category === "vacancesHiver" || category === "vacancesPrintemps") {
+      if (category === "vacances Hiver" || category === "vacances Printemps") {
         document.getElementById("subCategorySection").classList.remove("hidden");
       } else {
         document.getElementById("subCategorySection").classList.add("hidden");
@@ -270,7 +270,7 @@
 
       // Sous-catégorie pour hiver/printemps
       let chosenSubCategory = "";
-      if (selectedCategory === "vacancesHiver" || selectedCategory === "vacancesPrintemps") {
+      if (selectedCategory === "vacances Hiver" || selectedCategory === "vacances Printemps") {
         chosenSubCategory = document.getElementById("subCategorySelect").value;
       }
 
