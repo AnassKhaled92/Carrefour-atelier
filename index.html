@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Carrefour l'Atelier - Budget (Ado / Enfant)</title>
+  <title>Carrefour l'Atelier - Budget (Debug)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <!-- Firebase (compat) -->
@@ -62,8 +62,6 @@
       margin-top: 5px;
       text-align: center;
     }
-
-    /* Sous-catégorie Ado / Enfant */
     #subCategorySection {
       margin: 15px 0;
       text-align: center;
@@ -78,7 +76,6 @@
       font-size: 15px;
       color: #555;
     }
-
     .flex-row {
       display: flex;
       gap: 10px;
@@ -104,7 +101,6 @@
     .flex-row button:hover {
       background: #218838;
     }
-
     #historyList {
       list-style: none;
       padding: 0;
@@ -130,15 +126,27 @@
     .delete-btn:hover {
       background: darkred;
     }
-
     .hidden {
       display: none;
+    }
+
+    /* Zone pour afficher la console/log */
+    #debugArea {
+      margin-top: 20px;
+      width: 100%;
+      height: 200px;
+      border: 2px solid #666;
+      background: #f0f0f0;
+      font-family: monospace;
+      font-size: 14px;
+      white-space: pre-wrap;
+      overflow-y: auto;
     }
   </style>
 </head>
 
 <body>
-  <h1>Carrefour l'Atelier - Budget (Ado / Enfant)</h1>
+  <h1>Carrefour l'Atelier - Budget (Debug)</h1>
 
   <div class="container">
     <div class="budget-total">
@@ -156,7 +164,6 @@
       Budget restant : <span id="budgetCategory">--</span> €
     </h3>
 
-    <!-- Sous-catégorie ado/enfant, affiché si hiver/printemps -->
     <div id="subCategorySection" class="hidden">
       <label for="subCategorySelect">Sous-catégorie :</label>
       <select id="subCategorySelect">
@@ -174,11 +181,42 @@
     </div>
 
     <ul id="historyList"></ul>
+
+    <h3>Console & Debug :</h3>
+    <div id="debugArea"></div>
   </div>
 
   <script>
     /*********************************************
-     * A) Configuration Firebase
+     * 0) Rediriger console.log / console.error / window.onerror
+     *    vers #debugArea
+     *********************************************/
+    (function interceptConsole(){
+      const debugElem = document.getElementById("debugArea");
+      const oldLog = console.log;
+      const oldError = console.error;
+
+      function appendLog(prefix, ...args) {
+        const text = "[" + prefix + "] " + args.join(" ") + "\n";
+        debugElem.textContent += text;
+        debugElem.scrollTop = debugElem.scrollHeight;
+      }
+
+      console.log = function(...args) {
+        appendLog("LOG", ...args);
+        oldLog.apply(console, args);
+      };
+      console.error = function(...args) {
+        appendLog("ERR", ...args);
+        oldError.apply(console, args);
+      };
+      window.onerror = function(msg, url, line, col, err) {
+        appendLog("ONERROR", msg + " @ " + url + ":" + line);
+      };
+    })();
+
+    /*********************************************
+     * A) Config Firebase
      *********************************************/
     const firebaseConfig = {
       apiKey: "AIzaSyBaNNWoRNUC7d7N-Lt16Gu-Sv1K2TncWqg",
@@ -189,16 +227,17 @@
       appId: "1:400841694123:web:fd37ae0dbef2d0d21d10ee"
     };
 
+    console.log("Initialisation de Firebase...");
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
     /*********************************************
-     * B) Référence Firestore : doc(budgets/global)
+     * B) Référence Firestore
      *********************************************/
     const docRef = db.collection("budgets").doc("global");
 
     /*********************************************
-     * C) Structure initiale (ado/enfant)
+     * C) Données par défaut (ado/enfant)
      *********************************************/
     let budgets = {
       total: 1800,
@@ -218,95 +257,100 @@
       historique: []
     };
 
-    // Catégorie sélectionnée
     let selectedCategory = null;
 
     /*********************************************
-     * D) onSnapshot => synchro temps réel
+     * D) Synchro en temps réel (onSnapshot)
      *********************************************/
-    docRef.onSnapshot(async (snap) => {
-      if (!snap.exists) {
-        // Si le doc n'existe pas, on le crée
+    docRef.onSnapshot(async (snapshot) => {
+      console.log("onSnapshot déclenché.");
+      if (!snapshot.exists) {
+        console.log("Doc 'budgets/global' n'existe pas, on le crée...");
         await docRef.set(budgets);
       } else {
-        budgets = snap.data();
+        budgets = snapshot.data();
+        console.log("Données Firestore reçues :", JSON.stringify(budgets));
       }
       refreshUI();
     }, (error) => {
+      console.error("Erreur onSnapshot :", error);
       alert("Erreur Firestore onSnapshot : " + error);
     });
 
     /*********************************************
      * E) Sélection d'une catégorie
      *********************************************/
-    function selectCategory(category) {
+    window.selectCategory = function(category) {
+      console.log("Catégorie sélectionnée :", category);
       selectedCategory = category;
 
       document.getElementById("categoryTitle").textContent = "Catégorie : " + category;
       document.getElementById("categoryTitle").classList.remove("hidden");
       document.getElementById("budgetRestant").classList.remove("hidden");
       document.getElementById("deductionSection").classList.remove("hidden");
-
-      // Remet l'input à vide
       document.getElementById("amountInput").value = "";
 
-      // Si c'est Hiver ou Printemps, on affiche la sous-catégorie
       if (category === "vacancesHiver" || category === "vacancesPrintemps") {
         document.getElementById("subCategorySection").classList.remove("hidden");
       } else {
         document.getElementById("subCategorySection").classList.add("hidden");
       }
-
       refreshUI();
     }
 
     /*********************************************
      * F) Déduire un montant
      *********************************************/
-    async function deduireMontant() {
-      if (!selectedCategory) return;
-
-      const amount = parseFloat(document.getElementById("amountInput").value);
-      if (isNaN(amount) || amount <= 0) {
-        alert("Montant invalide.");
+    window.deduireMontant = async function() {
+      console.log(">> Début deduireMontant()");
+      if (!selectedCategory) {
+        console.warn("Aucune catégorie sélectionnée !");
         return;
       }
 
-      // 1) On retire du total global
-      budgets.total -= amount;
+      const amountValue = parseFloat(document.getElementById("amountInput").value);
+      console.log("Montant saisi :", amountValue);
 
-      // 2) Retrait dans la catégorie
+      if (isNaN(amountValue) || amountValue <= 0) {
+        alert("Montant invalide (>0).");
+        return;
+      }
+
+      // Mise à jour
+      budgets.total -= amountValue;
+
       if (selectedCategory === "horsVacances") {
-        budgets.categories.horsVacances -= amount;
+        budgets.categories.horsVacances -= amountValue;
       } else {
-        // Hiver ou Printemps
         let catObj = budgets.categories[selectedCategory];
-        catObj.total -= amount;
+        catObj.total -= amountValue;
 
-        // Sous-catégorie ado/enfant
         const sub = document.getElementById("subCategorySelect").value;
+        console.log("Sous-catégorie :", sub);
         if (sub === "ado") {
-          catObj.ado -= amount;
+          catObj.ado -= amountValue;
         } else {
-          catObj.enfant -= amount;
+          catObj.enfant -= amountValue;
         }
       }
 
-      // 3) Historique
+      // Historique
       const now = new Date();
       budgets.historique.push({
         timestamp: now.toLocaleString(),
         category: selectedCategory,
         subCategory: (selectedCategory === "horsVacances") ? "" : document.getElementById("subCategorySelect").value,
-        amount: amount,
+        amount: amountValue,
         type: "deduction"
       });
 
-      // 4) Sauvegarde dans Firestore
+      console.log("On sauvegarde dans Firestore...");
       try {
         await docRef.set(budgets);
         document.getElementById("amountInput").value = "";
+        console.log("Sauvegarde terminée !");
       } catch (err) {
+        console.error("Erreur set(budgets) :", err);
         alert("Erreur Firestore : " + err);
       }
     }
@@ -314,13 +358,13 @@
     /*********************************************
      * G) Annuler une dépense
      *********************************************/
-    async function annulerDepense(index) {
+    window.annulerDepense = async function(index) {
+      console.log(">> Annuler dépense index=", index);
       if (!confirm("Voulez-vous annuler cette dépense ?")) return;
 
       const dep = budgets.historique[index];
       if (!dep) return;
 
-      // On remet l'argent
       budgets.total += dep.amount;
 
       if (dep.category === "horsVacances") {
@@ -331,38 +375,38 @@
 
         if (dep.subCategory === "ado") {
           catObj.ado += dep.amount;
-        } else if (dep.subCategory === "enfant") {
+        } else {
           catObj.enfant += dep.amount;
         }
       }
 
-      // Supprime l'élément de l'historique
       budgets.historique.splice(index, 1);
 
+      console.log("On sauvegarde après annulation...");
       try {
         await docRef.set(budgets);
+        console.log("Annulation sauvegardée !");
       } catch (err) {
+        console.error("Erreur set(budgets) :", err);
         alert("Erreur Firestore : " + err);
       }
     }
 
     /*********************************************
-     * H) refreshUI => mettre à jour l'affichage
+     * H) refreshUI => mise à jour de l'interface
      *********************************************/
     function refreshUI() {
-      // 1) Total global
+      console.log("refreshUI() appelé");
       document.getElementById("totalGlobal").textContent = budgets.total ?? "--";
 
-      // 2) Budget de la catégorie sélectionnée
       if (selectedCategory) {
-        const categoryTitleElem = document.getElementById("budgetCategory");
+        const catElem = document.getElementById("budgetCategory");
         if (selectedCategory === "horsVacances") {
-          categoryTitleElem.textContent = budgets.categories.horsVacances ?? 0;
+          catElem.textContent = budgets.categories.horsVacances ?? 0;
         } else {
           let catObj = budgets.categories[selectedCategory];
-          categoryTitleElem.textContent = catObj.total ?? 0;
+          catElem.textContent = catObj.total ?? 0;
 
-          // Afficher le budget ado/enfant
           const sub = document.getElementById("subCategorySelect").value;
           if (sub === "ado") {
             document.getElementById("subCategoryBudgetLabel").textContent =
@@ -374,14 +418,12 @@
         }
       }
 
-      // 3) Historique
-      const historyList = document.getElementById("historyList");
-      historyList.innerHTML = "";
+      // Historique
+      const histList = document.getElementById("historyList");
+      histList.innerHTML = "";
 
-      // On inverse pour avoir le plus récent en haut
-      const histReverse = [...budgets.historique].reverse();
-
-      histReverse.forEach((item, idx) => {
+      const reversed = [...budgets.historique].reverse();
+      reversed.forEach((item, idx) => {
         const realIndex = budgets.historique.length - 1 - idx;
 
         let txt = `${item.timestamp} - ${item.amount} € - [${item.category}`;
@@ -399,11 +441,11 @@
         delBtn.onclick = () => annulerDepense(realIndex);
 
         li.appendChild(delBtn);
-        historyList.appendChild(li);
+        histList.appendChild(li);
       });
     }
 
-    // Si on change ado/enfant, on rafraîchit l'UI
+    // Quand on change ado/enfant, refreshUI
     document.getElementById("subCategorySelect").addEventListener("change", () => {
       refreshUI();
     });
