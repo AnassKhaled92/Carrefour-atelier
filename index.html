@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Carrefour l'Atelier - Budget (Ado/Enfant)</title>
+  <title>Carrefour l'Atelier - Budget (Ado / Enfant)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <!-- Firebase (compat) -->
@@ -63,7 +63,7 @@
       text-align: center;
     }
 
-    /* Sous-catégorie (Ado / Enfant) */
+    /* Sous-catégorie Ado / Enfant */
     #subCategorySection {
       margin: 15px 0;
       text-align: center;
@@ -105,7 +105,6 @@
       background: #218838;
     }
 
-    /* Historique */
     #historyList {
       list-style: none;
       padding: 0;
@@ -146,7 +145,6 @@
       Montant total : <span id="totalGlobal">--</span> €
     </div>
 
-    <!-- Boutons pour choisir la catégorie -->
     <div class="categories">
       <button onclick="selectCategory('horsVacances')">Hors vacances (800€)</button>
       <button onclick="selectCategory('vacancesHiver')">Vacances Hiver (500€)</button>
@@ -158,7 +156,7 @@
       Budget restant : <span id="budgetCategory">--</span> €
     </h3>
 
-    <!-- Sous-catégorie ado/enfant, affichée si Hiver/Printemps -->
+    <!-- Sous-catégorie ado/enfant, affiché si hiver/printemps -->
     <div id="subCategorySection" class="hidden">
       <label for="subCategorySelect">Sous-catégorie :</label>
       <select id="subCategorySelect">
@@ -220,7 +218,7 @@
       historique: []
     };
 
-    // Variables pour la sélection en cours
+    // Catégorie sélectionnée
     let selectedCategory = null;
 
     /*********************************************
