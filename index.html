@@ -10,7 +10,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-firestore-compat.js"></script>
 
   <style>
-    /* ---------- Style de base ---------- */
+    /* ---------- STYLES DE BASE ---------- */
     body {
       font-family: Arial, sans-serif;
       margin: 20px;
@@ -63,8 +63,7 @@
       margin-top: 5px;
       text-align: center;
     }
-
-    /* Sous-catégories (Ado, Enfant) */
+    /* Sous-catégories (Club Ado / Club Enfant) */
     #subCategorySection {
       margin: 15px 0;
       text-align: center;
@@ -74,7 +73,6 @@
       padding: 6px;
       border-radius: 5px;
     }
-
     .flex-row {
       display: flex;
       gap: 10px;
@@ -100,7 +98,6 @@
     .flex-row button:hover {
       background: #218838;
     }
-
     /* Historique */
     #historyList {
       list-style: none;
@@ -137,7 +134,7 @@
   <h1>Carrefour l'Atelier - Budget</h1>
 
   <div class="container">
-    <!-- Affichage du total global -->
+    <!-- Montant total global -->
     <div class="budget-total">
       Montant total : <span id="totalBudget">--</span> €
     </div>
@@ -149,11 +146,13 @@
       <button onclick="selectCategory('vacancesPrintemps')">Vacances Printemps (500€)</button>
     </div>
 
-    <!-- Titre de la catégorie et budget restant -->
+    <!-- Titre de la catégorie choisie -->
     <h2 id="categoryTitle" class="hidden"></h2>
-    <h3 id="budgetRestant" class="hidden">Budget restant : <span id="budgetCategory">--</span> €</h3>
+    <h3 id="budgetRestant" class="hidden">
+      Budget restant : <span id="budgetCategory">--</span> €
+    </h3>
 
-    <!-- Sous-catégories (Club Ado, Club Enfant) : affiché UNIQUEMENT si c'est Vacances -->
+    <!-- Sous-catégorie (Club Ado / Club Enfant), visible si Hiver/Printemps -->
     <div id="subCategorySection" class="hidden">
       <label for="subCategorySelect">Sous-catégorie :</label>
       <select id="subCategorySelect">
@@ -175,10 +174,10 @@
   </div>
 
   <script>
-    console.log(">> Script démarré : Carrefour l'Atelier - Budget (1800€ total).");
+    console.log(">> Carrefour l'Atelier - Budget : Script démarré.");
 
     // ------------------------------------------------
-    // A) Configuration Firebase (tes clés)
+    // A) CONFIG FIREBASE : TES CLÉS
     // ------------------------------------------------
     const firebaseConfig = {
       apiKey: "AIzaSyBaNNWoRNUC7d7N-Lt16Gu-Sv1K2TncWqg",
@@ -194,13 +193,12 @@
     const db = firebase.firestore();
 
     // ------------------------------------------------
-    // B) Référence Firestore
+    // B) Référence Firestore : doc "budgets/global"
     // ------------------------------------------------
-    // Collection "budgets", doc "global"
     const docRef = db.collection("budgets").doc("global");
 
     // ------------------------------------------------
-    // C) Structure / données par défaut
+    // C) Données par défaut (budget initial : 1800)
     // ------------------------------------------------
     let budgets = {
       total: 1800,
@@ -212,15 +210,15 @@
       historique: []
     };
 
-    // Catégorie principale choisie
+    // Catégorie sélectionnée
     let selectedCategory = null;
 
     // ------------------------------------------------
-    // D) Écoute en temps réel (onSnapshot)
+    // D) Synchro temps réel (onSnapshot)
     // ------------------------------------------------
     docRef.onSnapshot(async (docSnap) => {
       if (!docSnap.exists) {
-        console.log(">> Le doc 'budgets/global' n'existe pas, on le crée avec 1800€.");
+        console.log(">> Le doc 'budgets/global' n'existe pas, on le crée avec 1800 €.");
         await docRef.set(budgets);
       } else {
         budgets = docSnap.data();
@@ -239,26 +237,21 @@
       console.log(">> Catégorie sélectionnée :", category);
       selectedCategory = category;
 
-      // Affiche le titre, le budget de la catégorie
       document.getElementById("categoryTitle").textContent = "Catégorie : " + category;
       document.getElementById("categoryTitle").classList.remove("hidden");
-
       document.getElementById("budgetRestant").classList.remove("hidden");
       document.getElementById("deductionSection").classList.remove("hidden");
 
-      // Vider l'input
+      // On vide l'input
       document.getElementById("amountInput").value = "";
 
-      // Afficher ou cacher la sélection "Club Ado / Club Enfant" :
+      // Affiche ou cache la sous-catégorie (club ado/enfant)
       if (category === "vacancesHiver" || category === "vacancesPrintemps") {
-        // Affiche la sélection sous-catégorie
         document.getElementById("subCategorySection").classList.remove("hidden");
       } else {
-        // Hors vacances => pas de sous-catégorie
         document.getElementById("subCategorySection").classList.add("hidden");
       }
 
-      // Met à jour l'interface
       refreshUI();
     }
 
@@ -267,7 +260,7 @@
     // ------------------------------------------------
     async function deduireMontant() {
       if (!selectedCategory) {
-        console.warn(">> Aucune catégorie n'est sélectionnée.");
+        console.warn(">> Aucune catégorie sélectionnée !");
         return;
       }
 
@@ -275,39 +268,38 @@
       const amountValue = parseFloat(amountInput.value);
 
       if (isNaN(amountValue) || amountValue <= 0) {
-        alert("Veuillez saisir un montant valide (> 0).");
+        alert("Veuillez saisir un montant valide (>0).");
         return;
       }
 
-      // On décrémente la catégorie & le total global
+      // Met à jour la catégorie et le total global
       budgets.categories[selectedCategory] -= amountValue;
       budgets.total -= amountValue;
 
-      // Sous-catégorie (si c'est vacances)
+      // Si c'est Hiver/Printemps, on récupère la sous-catégorie (ado/enfant)
       let chosenSubCategory = "";
       if (selectedCategory === "vacancesHiver" || selectedCategory === "vacancesPrintemps") {
-        chosenSubCategory = document.getElementById("subCategorySelect").value; 
-        // soit "ado" soit "enfant"
+        chosenSubCategory = document.getElementById("subCategorySelect").value;
       }
 
-      // Historique
+      // Ajout dans l'historique
       const now = new Date();
       const expense = {
-        timestamp: now.toLocaleString(),      // ex: "14/02/2025, 10:00:00"
-        category: selectedCategory,           // "vacancesHiver"
-        subCategory: chosenSubCategory,       // "ado" / "enfant" / ""
+        timestamp: now.toLocaleString(),
+        category: selectedCategory,
+        subCategory: chosenSubCategory,
         amount: amountValue,
         type: "deduction"
       };
       budgets.historique.push(expense);
 
-      console.log(">> On enregistre dans Firestore...");
+      console.log(">> Sauvegarde dans Firestore...");
       try {
         await docRef.set(budgets);
-        // On vide le champ "Montant à déduire"
+        // Vide l'input
         amountInput.value = "";
       } catch (err) {
-        console.error(">> Erreur lors du set Firestore :", err);
+        console.error(">> Erreur docRef.set(budgets) :", err);
         alert("Erreur Firestore : " + err);
       }
     }
@@ -321,61 +313,60 @@
       const depense = budgets.historique[index];
       if (!depense) return;
 
-      // Si c'est une déduction, on ré-incrémente la catégorie & le total
+      // Remettre l'argent si c'était une déduction
       if (depense.type === "deduction") {
         budgets.categories[depense.category] += depense.amount;
         budgets.total += depense.amount;
       }
 
-      // On enlève l'entrée du tableau
+      // Supprime la dépense de l'historique
       budgets.historique.splice(index, 1);
 
       console.log(">> Sauvegarde Firestore après annulation...");
       try {
         await docRef.set(budgets);
       } catch (err) {
-        console.error(">> Erreur lors du set Firestore :", err);
+        console.error(">> Erreur docRef.set(budgets) :", err);
         alert("Erreur Firestore : " + err);
       }
     }
 
     // ------------------------------------------------
-    // H) Mettre à jour l'interface
+    // H) Rafraîchir l'interface
     // ------------------------------------------------
     function refreshUI() {
       console.log(">> refreshUI() - total global =", budgets.total);
 
-      // Affiche le total
+      // 1) Affiche le total
       document.getElementById("totalBudget").textContent = budgets.total ?? "--";
 
-      // Affiche le budget de la catégorie sélectionnée
+      // 2) Affiche la catégorie sélectionnée
       if (selectedCategory) {
-        const catAmount = budgets.categories[selectedCategory] ?? 0;
-        document.getElementById("budgetCategory").textContent = catAmount;
+        document.getElementById("budgetCategory").textContent =
+          budgets.categories[selectedCategory] ?? "--";
       }
 
-      // Gérer l'historique (du plus récent au plus ancien)
+      // 3) Historique (du plus récent au plus ancien)
       const historyList = document.getElementById("historyList");
       historyList.innerHTML = "";
 
-      // On inverse le tableau pour voir la dernière dépense en haut
+      // On inverse le tableau pour avoir la dernière dépense en haut
       const historiqueInverse = [...budgets.historique].reverse();
 
       historiqueInverse.forEach((item, idx) => {
-        // On retrouve l'index original
         const realIndex = budgets.historique.length - 1 - idx;
 
-        // Exemple d'affichage : "14/02/2025, 10:00:00 - 50 € - [vacancesHiver - ado]"
-        let displayText = `${item.timestamp} - ${item.amount} € - [${item.category}`;
+        // Ex : "13/03/2025, 10:00:00 - 50€ - [vacancesHiver - ado]"
+        let txt = `${item.timestamp} - ${item.amount} € - [${item.category}`;
         if (item.subCategory) {
-          displayText += " - " + item.subCategory;
+          txt += " - " + item.subCategory;
         }
-        displayText += "]";
+        txt += "]`;
 
         const li = document.createElement("li");
-        li.textContent = displayText;
+        li.textContent = txt;
 
-        // Bouton "X" pour annuler
+        // Bouton X
         const deleteBtn = document.createElement("button");
         deleteBtn.classList.add("delete-btn");
         deleteBtn.textContent = "X";
@@ -388,3 +379,4 @@
   </script>
 </body>
 </html>
+
