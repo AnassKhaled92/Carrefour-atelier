@@ -111,7 +111,6 @@
       }
       budgets.total -= amountValue;
 
-      // 📌 Ajout de la date et heure actuelle
       let now = new Date();
       let formattedDate = now.toLocaleDateString("fr-FR") + " - " + now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 
@@ -125,24 +124,12 @@
       docRef.set(budgets).then(() => refreshUI());
     }
 
-    function refreshUI() {
-      if (!budgets) return;
-      document.getElementById("totalGlobal").textContent = budgets.total;
-      if (selectedCategory === "horsVacances") {
-        document.getElementById("budgetCategory").textContent = budgets.categories.horsVacances;
-      } else {
-        let subCategory = document.getElementById("subCategorySelect").value;
-        document.getElementById("budgetCategory").textContent = budgets.categories[selectedCategory][subCategory];
-      }
-      afficherHistorique();
-    }
-
     function afficherHistorique() {
       const list = document.getElementById("historyList");
       list.innerHTML = "";
       budgets.historique.forEach((item) => {
         let li = document.createElement("li");
-        li.innerHTML = `${item.date} | ${item.montant}€ (${item.categorie})  
+        li.innerHTML = `${item.date ? item.date : "Date inconnue"} | ${item.montant}€ (${item.categorie})  
           <button class="delete-btn" onclick="supprimerDepense(${item.id}, ${item.montant})">X</button>`;
         list.appendChild(li);
       });
