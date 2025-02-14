@@ -4,71 +4,28 @@
   <meta charset="UTF-8">
   <title>Gestionnaire de Budget</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Firebase -->
+  
+  <!-- Intégration Firebase sans module -->
   <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-firestore-compat.js"></script>
+
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
-      text-align: center;
-      padding: 20px;
-    }
+    body { font-family: Arial, sans-serif; background-color: #f4f4f4; text-align: center; padding: 20px; }
     h1 { color: #007bff; }
-    .container {
-      background: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      max-width: 500px;
-      margin: auto;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    .budget-total {
-      font-size: 20px;
-      font-weight: bold;
-      color: #28a745;
-      margin-bottom: 15px;
-    }
-    button {
-      padding: 10px;
-      font-size: 16px;
-      margin: 5px;
-      border-radius: 5px;
-      cursor: pointer;
-      border: none;
-    }
+    .container { background: #fff; padding: 20px; border-radius: 8px; max-width: 500px; margin: auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    .budget-total { font-size: 20px; font-weight: bold; color: #28a745; margin-bottom: 15px; }
+    button { padding: 10px; font-size: 16px; margin: 5px; border-radius: 5px; cursor: pointer; border: none; }
     .categories button { background: #007bff; color: white; }
     .categories button:hover { background: #0056b3; }
-    select, input {
-      padding: 10px;
-      font-size: 16px;
-      margin: 5px;
-      border-radius: 5px;
-      width: 80%;
-    }
-    .history-list li {
-      background: #f8f9fa;
-      padding: 10px;
-      margin: 5px;
-      border-radius: 5px;
-      display: flex;
-      justify-content: space-between;
-    }
-    .delete-btn {
-      background: red;
-      color: white;
-      padding: 5px;
-      cursor: pointer;
-      border-radius: 5px;
-    }
+    select, input { padding: 10px; font-size: 16px; margin: 5px; border-radius: 5px; width: 80%; }
+    .history-list li { background: #f8f9fa; padding: 10px; margin: 5px; border-radius: 5px; display: flex; justify-content: space-between; }
+    .delete-btn { background: red; color: white; padding: 5px; cursor: pointer; border-radius: 5px; }
   </style>
 </head>
 <body>
   <h1>Gestionnaire de Budget</h1>
   <div class="container">
-    <div class="budget-total">
-      Montant total : <span id="totalGlobal">--</span> €
-    </div>
+    <div class="budget-total">Montant total : <span id="totalGlobal">--</span> €</div>
     <div class="categories">
       <button onclick="selectCategory('horsVacances')">Hors vacances (800€)</button>
       <button onclick="selectCategory('vacancesHiver')">Vacances Hiver (500€)</button>
@@ -92,38 +49,39 @@
   </div>
 
   <script>
-    // 📌 Configuration Firebase
+    // 📌 Configuration Firebase SANS module
     const firebaseConfig = {
-      apiKey: "VOTRE_API_KEY",
-      authDomain: "VOTRE_AUTH_DOMAIN",
-      projectId: "VOTRE_PROJECT_ID",
-      storageBucket: "VOTRE_STORAGE_BUCKET",
-      messagingSenderId: "VOTRE_MESSAGING_SENDER_ID",
-      appId: "VOTRE_APP_ID"
+      apiKey: "AIzaSyBaNNWoRNUC7d7N-Lt16Gu-Sv1K2TncWqg",
+      authDomain: "carrefouratelier.firebaseapp.com",
+      projectId: "carrefouratelier",
+      storageBucket: "carrefouratelier.firebasestorage.app",
+      messagingSenderId: "400841694123",
+      appId: "1:400841694123:web:fd37ae0dbef2d0d21d10ee"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const docRef = db.collection("budgets").doc("global");
 
-    let budgets = {
-      total: 1800,
-      categories: {
-        horsVacances: 800,
-        vacancesHiver: { total: 500, ado: 250, enfant: 250 },
-        vacancesPrintemps: { total: 500, ado: 250, enfant: 250 }
-      },
-      historique: []
-    };
+    let budgets = null;
     let selectedCategory = null;
 
-    // 🔄 Mise à jour en temps réel depuis Firestore
+    // 🔄 Récupération en temps réel des budgets
     docRef.onSnapshot((snap) => {
       if (snap.exists) {
         budgets = snap.data();
+        refreshUI();
       } else {
+        budgets = {
+          total: 1800,
+          categories: {
+            horsVacances: 800,
+            vacancesHiver: { total: 500, ado: 250, enfant: 250 },
+            vacancesPrintemps: { total: 500, ado: 250, enfant: 250 }
+          },
+          historique: []
+        };
         docRef.set(budgets);
       }
-      refreshUI();
     });
 
     function selectCategory(category) {
@@ -138,7 +96,7 @@
     }
 
     function deduireMontant() {
-      if (!selectedCategory) return alert("Choisissez une catégorie !");
+      if (!budgets || !selectedCategory) return alert("Erreur : catégorie non sélectionnée.");
       const amountValue = parseFloat(document.getElementById("amountInput").value);
       if (isNaN(amountValue) || amountValue <= 0) return alert("Montant invalide.");
 
@@ -154,11 +112,11 @@
       budgets.total -= amountValue;
       budgets.historique.push({ id: Date.now(), montant: amountValue, categorie: selectedCategory });
 
-      docRef.set(budgets);
-      refreshUI();
+      docRef.set(budgets).then(() => refreshUI());
     }
 
     function refreshUI() {
+      if (!budgets) return;
       document.getElementById("totalGlobal").textContent = budgets.total;
       if (selectedCategory === "horsVacances") {
         document.getElementById("budgetCategory").textContent = budgets.categories.horsVacances;
@@ -183,8 +141,7 @@
     function supprimerDepense(id) {
       if (!confirm("Êtes-vous sûr de vouloir supprimer cette dépense ?")) return;
       budgets.historique = budgets.historique.filter(item => item.id !== id);
-      docRef.set(budgets);
-      refreshUI();
+      docRef.set(budgets).then(() => refreshUI());
     }
   </script>
 </body>
