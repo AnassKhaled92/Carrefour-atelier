@@ -8,7 +8,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-firestore-compat.js"></script>
   <style>
-    /* Styles pour l'interface utilisateur */
     body {
       font-family: Arial, sans-serif;
       margin: 20px;
@@ -16,9 +15,7 @@
       color: #333;
       text-align: center;
     }
-    h1 {
-      color: #007bff;
-    }
+    h1 { color: #007bff; }
     .container {
       max-width: 500px;
       margin: auto;
@@ -27,87 +24,37 @@
       border-radius: 8px;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
-    .budget-total {
-      font-size: 20px;
-      font-weight: bold;
-      color: #28a745;
-      margin-bottom: 15px;
-    }
+    .budget-total { font-size: 20px; font-weight: bold; color: #28a745; margin-bottom: 15px; }
     .categories button {
-      font-size: 16px;
-      padding: 10px;
-      margin: 5px;
-      border: none;
-      border-radius: 5px;
-      background: #007bff;
-      color: #fff;
-      cursor: pointer;
+      font-size: 16px; padding: 10px; margin: 5px; border: none; border-radius: 5px;
+      background: #007bff; color: #fff; cursor: pointer;
     }
-    .categories button:hover {
-      background: #0056b3;
-    }
-    #budgetRestant {
-      font-size: 18px;
-      margin-top: 10px;
-    }
-    #subCategorySection {
-      margin: 15px 0;
-    }
-    select {
-      font-size: 16px;
-      padding: 6px;
-      border-radius: 5px;
-    }
+    .categories button:hover { background: #0056b3; }
+    #budgetRestant { font-size: 18px; margin-top: 10px; }
+    select { font-size: 16px; padding: 6px; border-radius: 5px; }
     .flex-row {
-      display: flex;
-      gap: 10px;
-      margin: 20px 0;
-      justify-content: center;
+      display: flex; gap: 10px; margin: 20px 0; justify-content: center;
     }
     .flex-row input {
-      flex: 1;
-      padding: 10px;
-      font-size: 16px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
+      flex: 1; padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc;
     }
     .flex-row button {
-      padding: 10px 15px;
-      font-size: 16px;
-      border: none;
-      border-radius: 5px;
-      background: #28a745;
-      color: #fff;
-      cursor: pointer;
+      padding: 10px 15px; font-size: 16px; border: none; border-radius: 5px;
+      background: #28a745; color: #fff; cursor: pointer;
     }
-    .flex-row button:hover {
-      background: #218838;
-    }
+    .flex-row button:hover { background: #218838; }
     #historyList {
-      list-style: none;
-      padding: 0;
-      margin-top: 20px;
+      list-style: none; padding: 0; margin-top: 20px;
     }
     #historyList li {
-      background: #f8f9fa;
-      margin: 5px 0;
-      padding: 10px;
-      border-radius: 5px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      background: #f8f9fa; margin: 5px 0; padding: 10px; border-radius: 5px;
+      display: flex; justify-content: space-between; align-items: center;
     }
     .delete-btn {
-      background: red;
-      color: white;
-      border: none;
-      padding: 5px 10px;
-      cursor: pointer;
-      border-radius: 5px;
+      background: red; color: white; border: none; padding: 5px 10px;
+      cursor: pointer; border-radius: 5px;
     }
-    .delete-btn:hover {
-      background: darkred;
-    }
+    .delete-btn:hover { background: darkred; }
   </style>
 </head>
 <body>
@@ -140,7 +87,7 @@
     <ul id="historyList"></ul>
   </div>
   <script>
-    // Configuration Firebase
+    // 📌 Configuration Firebase
     const firebaseConfig = {
       apiKey: "VOTRE_API_KEY",
       authDomain: "VOTRE_AUTH_DOMAIN",
@@ -153,7 +100,6 @@
     const db = firebase.firestore();
     const docRef = db.collection("budgets").doc("global");
 
-    // Structure initiale des budgets
     let budgets = {
       total: 1800,
       categories: {
@@ -165,10 +111,12 @@
     };
     let selectedCategory = null;
 
-    // Synchronisation avec Firestore
     docRef.onSnapshot((snap) => {
-      if (snap.exists) budgets = snap.data();
-      else docRef.set(budgets);
+      if (snap.exists) {
+        budgets = snap.data();
+      } else {
+        docRef.set(budgets);
+      }
       refreshUI();
     });
 
@@ -183,4 +131,36 @@
         document.getElementById("subCategorySection").classList.add("hidden");
       }
       refreshUI();
-    
+    }
+
+    function deduireMontant() {
+      if (!selectedCategory) return;
+      const amountValue = parseFloat(document.getElementById("amountInput").value);
+      if (isNaN(amountValue) || amountValue <= 0) return alert("Montant invalide.");
+      
+      if (selectedCategory === "horsVacances") {
+        budgets.categories.horsVacances -= amountValue;
+      } else {
+        const subCategory = document.getElementById("subCategorySelect").value;
+        budgets.categories[selectedCategory][subCategory] -= amountValue;
+        budgets.categories[selectedCategory].total -= amountValue;
+      }
+      budgets.total -= amountValue;
+      budgets.historique.push({ montant: amountValue, categorie: selectedCategory });
+
+      docRef.set(budgets);
+      refreshUI();
+    }
+
+    function refreshUI() {
+      document.getElementById("totalGlobal").textContent = budgets.total;
+      if (selectedCategory === "horsVacances") {
+        document.getElementById("budgetCategory").textContent = budgets.categories.horsVacances;
+      } else {
+        let subCategory = document.getElementById("subCategorySelect").value;
+        document.getElementById("budgetCategory").textContent = budgets.categories[selectedCategory][subCategory];
+      }
+    }
+  </script>
+</body>
+</html>
