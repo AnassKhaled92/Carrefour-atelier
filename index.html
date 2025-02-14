@@ -110,7 +110,17 @@
         budgets.categories[selectedCategory].total -= amountValue;
       }
       budgets.total -= amountValue;
-      budgets.historique.push({ id: Date.now(), montant: amountValue, categorie: selectedCategory });
+
+      // 📌 Ajout de la date et heure actuelle
+      let now = new Date();
+      let formattedDate = now.toLocaleDateString("fr-FR") + " - " + now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+
+      budgets.historique.push({ 
+          id: Date.now(), 
+          montant: amountValue, 
+          categorie: selectedCategory, 
+          date: formattedDate
+      });
 
       docRef.set(budgets).then(() => refreshUI());
     }
@@ -132,28 +142,10 @@
       list.innerHTML = "";
       budgets.historique.forEach((item) => {
         let li = document.createElement("li");
-        li.innerHTML = `${item.montant}€ (${item.categorie}) 
+        li.innerHTML = `${item.date} | ${item.montant}€ (${item.categorie})  
           <button class="delete-btn" onclick="supprimerDepense(${item.id}, ${item.montant})">X</button>`;
         list.appendChild(li);
       });
-    }
-
-    function supprimerDepense(id, montant) {
-      if (!confirm("Êtes-vous sûr de vouloir supprimer cette dépense ?")) return;
-      
-      const depense = budgets.historique.find(item => item.id === id);
-      if (depense) {
-        budgets.total += montant;
-        if (depense.categorie === "horsVacances") {
-          budgets.categories.horsVacances += montant;
-        } else {
-          budgets.categories[depense.categorie][document.getElementById("subCategorySelect").value] += montant;
-          budgets.categories[depense.categorie].total += montant;
-        }
-      }
-      budgets.historique = budgets.historique.filter(item => item.id !== id);
-
-      docRef.set(budgets).then(() => refreshUI());
     }
   </script>
 </body>
