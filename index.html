@@ -5,7 +5,7 @@
   <title>Gestionnaire de Budget</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <!-- Intégration Firebase sans module -->
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-firestore-compat.js"></script>
 
@@ -49,7 +49,7 @@
   </div>
 
   <script>
-    // 📌 Configuration Firebase SANS module
+    // 📌 Configuration Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyBaNNWoRNUC7d7N-Lt16Gu-Sv1K2TncWqg",
       authDomain: "carrefouratelier.firebaseapp.com",
@@ -133,14 +133,26 @@
       budgets.historique.forEach((item) => {
         let li = document.createElement("li");
         li.innerHTML = `${item.montant}€ (${item.categorie}) 
-          <button class="delete-btn" onclick="supprimerDepense(${item.id})">X</button>`;
+          <button class="delete-btn" onclick="supprimerDepense(${item.id}, ${item.montant})">X</button>`;
         list.appendChild(li);
       });
     }
 
-    function supprimerDepense(id) {
+    function supprimerDepense(id, montant) {
       if (!confirm("Êtes-vous sûr de vouloir supprimer cette dépense ?")) return;
+      
+      const depense = budgets.historique.find(item => item.id === id);
+      if (depense) {
+        budgets.total += montant;
+        if (depense.categorie === "horsVacances") {
+          budgets.categories.horsVacances += montant;
+        } else {
+          budgets.categories[depense.categorie][document.getElementById("subCategorySelect").value] += montant;
+          budgets.categories[depense.categorie].total += montant;
+        }
+      }
       budgets.historique = budgets.historique.filter(item => item.id !== id);
+
       docRef.set(budgets).then(() => refreshUI());
     }
   </script>
