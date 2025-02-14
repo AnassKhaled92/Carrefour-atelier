@@ -17,9 +17,7 @@
       color: #333;
       text-align: center;
     }
-    h1 {
-      color: #007bff;
-    }
+    h1 { color: #007bff; }
     .container {
       max-width: 500px;
       margin: auto;
@@ -44,21 +42,10 @@
       color: #fff;
       cursor: pointer;
     }
-    .categories button:hover {
-      background: #0056b3;
-    }
-    #budgetRestant {
-      font-size: 18px;
-      margin-top: 10px;
-    }
-    #subCategorySection {
-      margin: 15px 0;
-    }
-    select {
-      font-size: 16px;
-      padding: 6px;
-      border-radius: 5px;
-    }
+    .categories button:hover { background: #0056b3; }
+    #budgetRestant { font-size: 18px; margin-top: 10px; }
+    #subCategorySection { margin: 15px 0; }
+    select { font-size: 16px; padding: 6px; border-radius: 5px; }
     .flex-row {
       display: flex;
       gap: 10px;
@@ -81,12 +68,11 @@
       color: #fff;
       cursor: pointer;
     }
-    .flex-row button:hover {
-      background: #218838;
-    }
+    .flex-row button:hover { background: #218838; }
     #historyList {
       list-style: none;
       padding: 0;
+      margin-top: 20px;
     }
     #historyList li {
       background: #f8f9fa;
@@ -96,14 +82,6 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-    }
-    .delete-btn {
-      background: red;
-      color: white;
-      border: none;
-      padding: 5px 10px;
-      cursor: pointer;
-      border-radius: 5px;
     }
   </style>
 </head>
@@ -123,13 +101,13 @@
     </div>
 
     <h2 id="categoryTitle" class="hidden"></h2>
-    <h3 id="budgetRestant" class="hidden">
+    <h3 id="budgetRestant">
       Budget restant : <span id="budgetCategory">--</span> €
     </h3>
 
     <div id="subCategorySection" class="hidden">
       <label for="subCategorySelect">Sous-catégorie :</label>
-      <select id="subCategorySelect">
+      <select id="subCategorySelect" onchange="refreshUI()">
         <option value="ado">Club Ado</option>
         <option value="enfant">Club Enfant</option>
       </select>
@@ -142,6 +120,7 @@
       </div>
     </div>
 
+    <h3>Historique des Dépenses :</h3>
     <ul id="historyList"></ul>
   </div>
 
@@ -158,60 +137,36 @@
     const db = firebase.firestore();
     const docRef = db.collection("budgets").doc("global");
 
-    let budgets = {
-      total: 1800,
-      categories: {
-        horsVacances: 800,
-        vacancesHiver: { total: 500, ado: 250, enfant: 250 },
-        vacancesPrintemps: { total: 500, ado: 250, enfant: 250 }
-      },
-      historique: []
-    };
-
+    let budgets = { total: 1800, categories: { horsVacances: 800, vacancesHiver: { total: 500, ado: 250, enfant: 250 }, vacancesPrintemps: { total: 500, ado: 250, enfant: 250 } }, historique: [] };
     let selectedCategory = null;
 
     docRef.onSnapshot((snap) => {
-      if (snap.exists) {
-        budgets = snap.data();
-      } else {
-        docRef.set(budgets);
-      }
+      if (snap.exists) budgets = snap.data();
+      else docRef.set(budgets);
       refreshUI();
     });
 
     function selectCategory(category) {
       selectedCategory = category;
       document.getElementById("categoryTitle").textContent = "Catégorie : " + category;
-      document.getElementById("categoryTitle").classList.remove("hidden");
       document.getElementById("budgetRestant").classList.remove("hidden");
       document.getElementById("deductionSection").classList.remove("hidden");
-      document.getElementById("amountInput").value = "";
-
-      if (category === "vacancesHiver" || category === "vacancesPrintemps") {
-        document.getElementById("subCategorySection").classList.remove("hidden");
-      } else {
-        document.getElementById("subCategorySection").classList.add("hidden");
-      }
+      if (category !== "horsVacances") document.getElementById("subCategorySection").classList.remove("hidden");
+      else document.getElementById("subCategorySection").classList.add("hidden");
       refreshUI();
     }
 
     async function deduireMontant() {
       if (!selectedCategory) return;
-
       const amountValue = parseFloat(document.getElementById("amountInput").value);
-      if (isNaN(amountValue) || amountValue <= 0) {
-        alert("Montant invalide.");
-        return;
-      }
+      if (isNaN(amountValue) || amountValue <= 0) return alert("Montant invalide.");
 
       budgets.total -= amountValue;
-      if (selectedCategory === "horsVacances") {
-        budgets.categories.horsVacances -= amountValue;
-      } else {
+      if (selectedCategory === "horsVacances") budgets.categories.horsVacances -= amountValue;
+      else {
         let catObj = budgets.categories[selectedCategory];
         catObj.total -= amountValue;
-        const sub = document.getElementById("subCategorySelect").value;
-        catObj[sub] -= amountValue;
+        catObj[document.getElementById("subCategorySelect").value] -= amountValue;
       }
 
       budgets.historique.push({ timestamp: new Date().toLocaleString(), amount: amountValue, category: selectedCategory });
@@ -221,6 +176,18 @@
 
     function refreshUI() {
       document.getElementById("totalGlobal").textContent = budgets.total ?? "--";
+      if (selectedCategory) {
+        const cat = budgets.categories[selectedCategory];
+        document.getElementById("budgetCategory").textContent = selectedCategory === "horsVacances" ? cat : cat.total ?? "--";
+      }
+
+      const historyList = document.getElementById("historyList");
+      historyList.innerHTML = "";
+      budgets.historique.forEach((item) => {
+        const li = document.createElement("li");
+        li.textContent = `${item.timestamp} - ${item.amount}€ - ${item.category}`;
+        historyList.appendChild(li);
+      });
     }
   </script>
 </body>
