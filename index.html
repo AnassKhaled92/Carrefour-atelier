@@ -1,139 +1,172 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Gestionnaire de Budget</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-firestore-compat.js"></script>
-
+  <meta charset="UTF-8" />
+  <title>Budget Carrefour</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body { font-family: Arial, sans-serif; background-color: #f4f4f4; text-align: center; padding: 20px; }
-    h1 { color: #007bff; }
-    .container { background: #fff; padding: 20px; border-radius: 8px; max-width: 500px; margin: auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    .budget-total { font-size: 20px; font-weight: bold; color: #28a745; margin-bottom: 15px; }
-    button { padding: 10px; font-size: 16px; margin: 5px; border-radius: 5px; cursor: pointer; border: none; }
-    .categories button { background: #007bff; color: white; }
-    .categories button:hover { background: #0056b3; }
-    select, input { padding: 10px; font-size: 16px; margin: 5px; border-radius: 5px; width: 80%; }
-    .history-list li { background: #f8f9fa; padding: 10px; margin: 5px; border-radius: 5px; display: flex; justify-content: space-between; }
-    .delete-btn { background: red; color: white; padding: 5px; cursor: pointer; border-radius: 5px; }
+    body { font-family: sans-serif; max-width: 500px; margin: auto; padding: 1rem; }
+    h1 { color: #059669; }
+    .tab { margin: 0 5px; padding: 6px 16px; border-radius: 16px; border: none; background: #eee; cursor: pointer; }
+    .tab.active { background: #059669; color: #fff; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { padding: 8px; border-bottom: 1px solid #eee; }
+    .deduction { background: #fee2e2; }
+    .addition { background: #ecfdf5; }
+    button.action { margin-left: 4px; border-radius: 6px; border: none; color: #fff; padding: 2px 8px; cursor: pointer; }
+    button.edit { background: #f59e42; }
+    button.delete { background: #ef4444; }
   </style>
+  <!-- Firebase CDN -->
+  <script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
-  <h1>Gestionnaire de Budget</h1>
-  <div class="container">
-    <div class="budget-total">Montant total : <span id="totalGlobal">--</span> €</div>
-    <div class="categories">
-      <button onclick="selectCategory('horsVacances')">Hors vacances (800€)</button>
-      <button onclick="selectCategory('vacancesHiver')">Vacances Hiver (500€)</button>
-      <button onclick="selectCategory('vacancesPrintemps')">Vacances Printemps (500€)</button>
-    </div>
-    <h2 id="categoryTitle"></h2>
-    <h3>Budget restant : <span id="budgetCategory">--</span> €</h3>
-    <div id="subCategorySection" class="hidden">
-      <label>Sous-catégorie :</label>
-      <select id="subCategorySelect" onchange="refreshUI()">
-        <option value="ado">Club Ado</option>
-        <option value="enfant">Club Enfant</option>
-      </select>
-    </div>
-    <div>
-      <input type="number" id="amountInput" placeholder="Montant à déduire">
-      <button onclick="deduireMontant()">Déduire</button>
-    </div>
-    <h3>Historique des Dépenses :</h3>
-    <ul id="historyList" class="history-list"></ul>
-  </div>
+  <h1>🛒 Budget Carrefour</h1>
 
-  <script>
-    // 📌 Configuration Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyBaNNWoRNUC7d7N-Lt16Gu-Sv1K2TncWqg",
-      authDomain: "carrefouratelier.firebaseapp.com",
-      projectId: "carrefouratelier",
-      storageBucket: "carrefouratelier.firebasestorage.app",
-      messagingSenderId: "400841694123",
-      appId: "1:400841694123:web:fd37ae0dbef2d0d21d10ee"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const docRef = db.collection("budgets").doc("global");
+  <div id="categories"></div>
 
-    let budgets = null;
-    let selectedCategory = null;
+  <form id="entryForm" style="margin: 1rem 0; display: flex; gap: 6px; flex-wrap: wrap;">
+    <input id="name" placeholder="Nom" required style="flex:2;" />
+    <input id="price" type="number" placeholder="Prix" required style="flex:1;" />
+    <select id="achatCat" style="flex:1;">
+      <option>Alimentation</option>
+      <option>Hygiène</option>
+      <option>Maison</option>
+      <option>Autre</option>
+    </select>
+    <select id="type" style="flex:1;">
+      <option value="ajout">Ajout</option>
+      <option value="deduction">Déduction</option>
+    </select>
+    <button type="submit" style="flex:1; background: #059669; color: #fff; border: none; border-radius: 8px;">Ajouter</button>
+  </form>
 
-    // 🔄 Récupération en temps réel des budgets
-    docRef.onSnapshot((snap) => {
-      if (snap.exists) {
-        budgets = snap.data();
-        refreshUI();
-      } else {
-        budgets = {
-          total: 1800,
-          categories: {
-            horsVacances: 800,
-            vacancesHiver: { total: 500, ado: 250, enfant: 250 },
-            vacancesPrintemps: { total: 500, ado: 250, enfant: 250 }
-          },
-          historique: []
-        };
-        docRef.set(budgets);
-      }
+  <div id="total" style="margin-bottom:10px; font-weight:bold;"></div>
+  <table id="budgetTable">
+    <thead>
+      <tr>
+        <th>Nom</th>
+        <th>Montant</th>
+        <th>Catégorie</th>
+        <th>Type</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="budgetBody"></tbody>
+  </table>
+
+<script>
+  // 👉 Mets ici ta config Firebase
+  const firebaseConfig = {
+    aapiKey: "AIzaSyAQW3iFQq4y0NYDkD9NH25_a5Nx9FL7D6o",
+  authDomain: "budget-carrefour.firebaseapp.com",
+  projectId: "budget-carrefour",
+  storageBucket: "budget-carrefour.firebasestorage.app",
+  messagingSenderId: "719724045452",
+  appId: "1:719724045452:web:1e785630a8f5fb903c47a9",
+  measurementId: "G-D7KJCB2XJW"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  const mainCategories = ["Vacances", "Hors vacances", "Club ados", "Club enfants"];
+  let selectedCat = mainCategories[0];
+  let editingId = null;
+
+  // Afficher les onglets
+  function renderTabs() {
+    const el = document.getElementById('categories');
+    el.innerHTML = '';
+    mainCategories.forEach(cat => {
+      const btn = document.createElement('button');
+      btn.textContent = cat;
+      btn.className = 'tab' + (cat === selectedCat ? ' active' : '');
+      btn.onclick = () => {
+        selectedCat = cat;
+        editingId = null;
+        document.getElementById('entryForm').reset();
+        renderTabs();
+        loadEntries();
+      };
+      el.appendChild(btn);
     });
+  }
 
-    function selectCategory(category) {
-      selectedCategory = category;
-      document.getElementById("categoryTitle").textContent = "Catégorie : " + category;
-      if (category !== "horsVacances") {
-        document.getElementById("subCategorySection").classList.remove("hidden");
-      } else {
-        document.getElementById("subCategorySection").classList.add("hidden");
-      }
-      refreshUI();
-    }
+  renderTabs();
 
-    function deduireMontant() {
-      if (!budgets || !selectedCategory) return alert("Erreur : catégorie non sélectionnée.");
-      const amountValue = parseFloat(document.getElementById("amountInput").value);
-      if (isNaN(amountValue) || amountValue <= 0) return alert("Montant invalide.");
-
-      if (selectedCategory === "horsVacances") {
-        if (budgets.categories.horsVacances < amountValue) return alert("Fonds insuffisants.");
-        budgets.categories.horsVacances -= amountValue;
-      } else {
-        const subCategory = document.getElementById("subCategorySelect").value;
-        if (budgets.categories[selectedCategory][subCategory] < amountValue) return alert("Fonds insuffisants.");
-        budgets.categories[selectedCategory][subCategory] -= amountValue;
-        budgets.categories[selectedCategory].total -= amountValue;
-      }
-      budgets.total -= amountValue;
-
-      let now = new Date();
-      let formattedDate = now.toLocaleDateString("fr-FR") + " - " + now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-
-      budgets.historique.push({ 
-          id: Date.now(), 
-          montant: amountValue, 
-          categorie: selectedCategory, 
-          date: formattedDate
+  // Charger les entrées depuis Firebase
+  function loadEntries() {
+    db.collection('budget_global')
+      .where('mainCategory', '==', selectedCat)
+      .orderBy('createdAt', 'desc')
+      .onSnapshot(snapshot => {
+        const body = document.getElementById('budgetBody');
+        body.innerHTML = '';
+        let total = 0;
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          total += data.price;
+          const tr = document.createElement('tr');
+          tr.className = data.type === "deduction" ? "deduction" : "addition";
+          tr.innerHTML = `
+            <td>${data.name}</td>
+            <td>${data.type === "deduction" ? "-" : "+"}${Math.abs(data.price)} €</td>
+            <td>${data.achatCat}</td>
+            <td>${data.type === "deduction" ? "Déduction" : "Ajout"}</td>
+            <td>
+              <button class="action edit" onclick="editEntry('${doc.id}', '${data.name}', '${Math.abs(data.price)}', '${data.achatCat}', '${data.type}')">Modifier</button>
+              <button class="action delete" onclick="deleteEntry('${doc.id}')">Supprimer</button>
+            </td>
+          `;
+          body.appendChild(tr);
+        });
+        document.getElementById('total').textContent = "Total : " + total.toFixed(2) + " €";
       });
+  }
 
-      docRef.set(budgets).then(() => refreshUI());
-    }
+  loadEntries();
 
-    function afficherHistorique() {
-      const list = document.getElementById("historyList");
-      list.innerHTML = "";
-      budgets.historique.forEach((item) => {
-        let li = document.createElement("li");
-        li.innerHTML = `${item.date ? item.date : "Date inconnue"} | ${item.montant}€ (${item.categorie})  
-          <button class="delete-btn" onclick="supprimerDepense(${item.id}, ${item.montant})">X</button>`;
-        list.appendChild(li);
-      });
+  // Ajouter/éditer une entrée
+  document.getElementById('entryForm').onsubmit = async function(e) {
+    e.preventDefault();
+    const name = document.getElementById('name').value.trim();
+    const price = parseFloat(document.getElementById('price').value);
+    const achatCat = document.getElementById('achatCat').value;
+    const type = document.getElementById('type').value;
+    const finalPrice = type === "deduction" ? -Math.abs(price) : Math.abs(price);
+    const obj = {
+      name, achatCat, type,
+      price: finalPrice,
+      mainCategory: selectedCat,
+      createdAt: new Date()
+    };
+
+    if (editingId) {
+      await db.collection('budget_global').doc(editingId).update(obj);
+      editingId = null;
+    } else {
+      await db.collection('budget_global').add(obj);
     }
-  </script>
+    document.getElementById('entryForm').reset();
+  };
+
+  // Modifier une entrée
+  window.editEntry = function(id, name, price, achatCat, type) {
+    editingId = id;
+    document.getElementById('name').value = name;
+    document.getElementById('price').value = price;
+    document.getElementById('achatCat').value = achatCat;
+    document.getElementById('type').value = type;
+  };
+
+  // Supprimer une entrée
+  window.deleteEntry = async function(id) {
+    if (confirm("Supprimer cette ligne ?")) {
+      await db.collection('budget_global').doc(id).delete();
+    }
+  };
+</script>
 </body>
 </html>
